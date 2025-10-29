@@ -6,8 +6,8 @@
   },
   // Do not surface parent Git repositories when opening this folder
   "git.openRepositoryInParentFolders": "never",
-  // Hide Git integration for this workspace for now; re-enable later when ready
-  "git.enabled": false,
-  // Further reduce repo detection noise in this workspace
-  "git.autoRepositoryDetection": "openEditors"
+  // Re-enable Git integration for this workspace
+  "git.enabled": true,
+  // Stop auto-detecting repos beyond what you explicitly open
+  "git.autoRepositoryDetection": false
 }
