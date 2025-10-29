@@ -1,0 +1,13 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit",
+    "source.sortMembers": "explicit"
+  },
+  // Do not surface parent Git repositories when opening this folder
+  "git.openRepositoryInParentFolders": "never",
+  // Hide Git integration for this workspace for now; re-enable later when ready
+  "git.enabled": false,
+  // Further reduce repo detection noise in this workspace
+  "git.autoRepositoryDetection": "openEditors"
+}

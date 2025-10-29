@@ -1,0 +1,13 @@
+{
+  "deadlines": [
+    { "title": "Literature Review", "course": "ENG 201", "dueAt": "2025-11-05T15:00:00Z", "progress": 65 },
+    { "title": "Group Project - Prototype", "course": "CS 305", "dueAt": "2025-11-12T09:00:00Z", "progress": 40 },
+    { "title": "Statistics Assignment 3", "course": "MATH 220", "dueAt": "2025-11-08T23:59:00Z", "progress": 20 }
+  ],
+  "overview": {
+    "weeklyStudyHours": 12,
+    "notesReviewed": 34,
+    "assignmentsCompleted": 18,
+    "streakDays": 4
+  }
+}
