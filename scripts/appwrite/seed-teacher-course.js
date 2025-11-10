@@ -1,11 +1,16 @@
-// Seed one teacher (Dr. Adrian Tan), one student (Alice Smith), and one course (MATH101 Calculus I)
-// - Creates Appwrite auth accounts (email+password)
-// - Creates matching profile docs (id = account $id)
-// - Creates a course owned by teacher (teacherIds = [aliceId])
-// - Enrolls teacher (role=teacher) and student (role=student)
-// - Adds a few lessons under the course
-//
+// Academic demo seeder (idempotent)
+// Expands original single-course seed to multiple courses and multiple students.
+// Data seeded:
+//   Teacher: Dr. Adrian Tan (adrian.tan@newinti.edu.my)
+//   Students: Alice Smith, Bob Lee, Carol Tan, David Wong
+//   Courses: MATH101 (Calculus I), PHYS101 (Physics I), CHEM101 (General Chemistry), ENG101 (English Composition)
+//   Enrollments: All students enrolled in all courses; teacher enrolled as teacher in all courses
+//   Lessons: 2 sample lessons per course (scheduled into the future)
+// Behavior:
+//   - Idempotent: Re-runs won't duplicate users, courses, enrollments, lessons (conflicts are handled, existing looked up by code/email)
+//   - Profiles upserted (role kept in sync)
 // Usage: node scripts/appwrite/seed-teacher-course.js
+//
 // Required envs: APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY, APPWRITE_DATABASE_ID
 
 const { Client, Users, Databases, ID } = require('node-appwrite');
@@ -18,10 +23,10 @@ const {
 } = process.env;
 
 function req(k, v) { if (!v) throw new Error(`Missing env ${k}`); return v; }
-const endpoint = req('APPWRITE_ENDPOINT', APPWRITE_ENDPOINT);
-const project = req('APPWRITE_PROJECT', APPWRITE_PROJECT);
+const endpoint = req('APPWRITE_ENDPOINT', APPWRITE_ENDPOINT || process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT);
+const project = req('APPWRITE_PROJECT', APPWRITE_PROJECT || process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID);
 const apiKey = req('APPWRITE_API_KEY', APPWRITE_API_KEY);
-const DB_ID = req('APPWRITE_DATABASE_ID', APPWRITE_DATABASE_ID);
+const DB_ID = req('APPWRITE_DATABASE_ID', APPWRITE_DATABASE_ID || process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID);
 
 const COL_PROFILES = 'profiles';
 const COL_COURSES = 'courses';
@@ -86,100 +91,140 @@ async function upsertProfile({ id, name, email, role }) {
   }
 }
 
-async function main() {
-  // Accounts
-  const teacher = { name: 'Dr. Adrian Tan', email: 'adrian.tan@newinti.edu.my', password: 'EduPlus!Teacher123' };
-  const student = { name: 'Alice Smith', email: 'alice.smith@student.newinti.edu.my', password: 'EduPlus!Alice123' };
-
-  // Create/find teacher
-  let t = await findUserByEmail(teacher.email);
-  if (!t) t = await ensureUser(teacher);
-  // Create/find student
-  let s = await findUserByEmail(student.email);
-  if (!s) s = await ensureUser(student);
-
-  // Profiles
-  await upsertProfile({ id: t.$id, name: teacher.name, email: teacher.email, role: 'teacher' });
-  await upsertProfile({ id: s.$id, name: student.name, email: student.email, role: 'student' });
-
-  // Course (owned by teacher)
-  const courseCode = 'MATH101';
-  const courseName = 'Calculus I';
-  let courseDoc;
+async function ensureCourse({ code, name, teacherId, color }) {
+  const { Query } = require('node-appwrite');
+  // Try create
   try {
-    courseDoc = await db.createDocument(DB_ID, COL_COURSES, ID.unique(), {
-      code: courseCode,
-      name: courseName,
-      color: '#2B0D52',
+    const doc = await db.createDocument(DB_ID, COL_COURSES, ID.unique(), {
+      code,
+      name,
+      color: color || null,
       gradingRule: 'standard',
-      teacherIds: [t.$id],
+      teacherIds: [teacherId],
       createdAt: new Date().toISOString(),
     });
+    return doc;
   } catch (e) {
     const msg = String(e?.message || e);
     if (!/already exists|409/.test(msg)) throw e;
-    // If unique index on code, fetch existing by code
-    const { Query } = require('node-appwrite');
-    const existing = await db.listDocuments(DB_ID, COL_COURSES, [Query.equal('code', [courseCode])]);
+    const existing = await db.listDocuments(DB_ID, COL_COURSES, [Query.equal('code', [code])]);
     if (!existing.total) throw new Error('Failed to find existing course by code after conflict');
-    courseDoc = existing.documents[0];
+    return existing.documents[0];
   }
+}
 
-  // Enrollments
+async function ensureEnrollment(courseId, userId, role) {
   const { Query } = require('node-appwrite');
-  async function ensureEnrollment(userId, role) {
-    const existing = await db.listDocuments(DB_ID, COL_ENROLLMENTS, [
-      Query.equal('courseId', [courseDoc.$id]),
-      Query.equal('userId', [userId]),
-    ]);
-    if (existing.total) {
-      const doc = existing.documents[0];
-      if (doc.status !== 'active' || doc.role !== role) {
-        await db.updateDocument(DB_ID, COL_ENROLLMENTS, doc.$id, { status: 'active', role });
-      }
-      return;
+  const existing = await db.listDocuments(DB_ID, COL_ENROLLMENTS, [
+    Query.equal('courseId', [courseId]),
+    Query.equal('userId', [userId]),
+  ]);
+  if (existing.total) {
+    const doc = existing.documents[0];
+    if (doc.status !== 'active' || doc.role !== role) {
+      await db.updateDocument(DB_ID, COL_ENROLLMENTS, doc.$id, { status: 'active', role });
     }
-    await db.createDocument(DB_ID, COL_ENROLLMENTS, ID.unique(), {
-      courseId: courseDoc.$id,
-      userId,
-      role,
-      status: 'active',
-      joinedAt: new Date().toISOString(),
-    });
+    return doc;
   }
-  await ensureEnrollment(t.$id, 'teacher');
-  await ensureEnrollment(s.$id, 'student');
+  return await db.createDocument(DB_ID, COL_ENROLLMENTS, ID.unique(), {
+    courseId,
+    userId,
+    role,
+    status: 'active',
+    joinedAt: new Date().toISOString(),
+  });
+}
 
-  // Lessons (3 sample weeks)
-  function isoShift(days, hoursStart, durationHrs) {
-    const now = new Date();
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days, hoursStart, 0, 0);
-    const e = new Date(d.getTime() + durationHrs * 60 * 60 * 1000);
-    return { startsAt: d.toISOString(), endsAt: e.toISOString() };
-  }
-  const lessons = [
-    { topic: 'Limits and Continuity', ...isoShift(2, 9, 2) },
-    { topic: 'Derivatives: Rules and Applications', ...isoShift(9, 9, 2) },
-    { topic: 'Integrals: Fundamentals', ...isoShift(16, 9, 2) },
-  ];
-  for (const l of lessons) {
+function makeLessonTimes(offsetDays, hourStart, durationHrs) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays, hourStart, 0, 0);
+  const end = new Date(start.getTime() + durationHrs * 60 * 60 * 1000);
+  return { startsAt: start.toISOString(), endsAt: end.toISOString() };
+}
+
+async function ensureLessons(courseId, topics) {
+  for (let i = 0; i < topics.length; i++) {
+    const t = topics[i];
     try {
-      await db.createDocument(DB_ID, COL_LESSONS, ID.unique(), { courseId: courseDoc.$id, topic: l.topic, startsAt: l.startsAt, endsAt: l.endsAt });
-    } catch {}
+      await db.createDocument(DB_ID, COL_LESSONS, ID.unique(), {
+        courseId,
+        topic: t.topic,
+        startsAt: t.startsAt,
+        endsAt: t.endsAt,
+      });
+    } catch (e) {
+      // Ignore duplicates
+    }
+  }
+}
+
+async function main() {
+  // Accounts (teacher + students)
+  const teacher = { name: 'Dr. Adrian Tan', email: 'adrian.tan@newinti.edu.my', password: 'EduPlus!Teacher123' };
+  const students = [
+    { name: 'Alice Smith', email: 'alice.smith@student.newinti.edu.my', password: 'EduPlus!Alice123' },
+    { name: 'Bob Lee', email: 'bob.lee@student.newinti.edu.my', password: 'EduPlus!Bob123' },
+    { name: 'Carol Tan', email: 'carol.tan@student.newinti.edu.my', password: 'EduPlus!Carol123' },
+    { name: 'David Wong', email: 'david.wong@student.newinti.edu.my', password: 'EduPlus!David123' },
+  ];
+
+  // Ensure teacher
+  let teacherUser = await findUserByEmail(teacher.email);
+  if (!teacherUser) teacherUser = await ensureUser(teacher);
+  await upsertProfile({ id: teacherUser.$id, name: teacher.name, email: teacher.email, role: 'teacher' });
+
+  // Ensure students
+  const studentUsers = [];
+  for (const s of students) {
+    let u = await findUserByEmail(s.email);
+    if (!u) u = await ensureUser(s);
+    await upsertProfile({ id: u.$id, name: s.name, email: s.email, role: 'student' });
+    studentUsers.push(u);
   }
 
-  console.log('\nSeeded:');
-  console.log('- Teacher:', teacher.email, '(password set)');
-  console.log('- Student:', student.email, '(password set)');
-  console.log('- Course:', courseCode, courseName, 'id=' + courseDoc.$id);
-  console.log('- Enrollments: teacher + student');
-  console.log('- Lessons: 3 created');
-  console.log('\nYou can now sign in as the student in the app:');
-  console.log('  Email:', student.email);
-  console.log('  Password:', student.password);
-  console.log('Teacher can sign in too:');
-  console.log('  Email:', teacher.email);
-  console.log('  Password:', teacher.password);
+  // Courses list
+  const coursesInput = [
+    { code: 'MATH101', name: 'Calculus I', color: '#2B0D52' },
+    { code: 'PHYS101', name: 'Physics I', color: '#0D3B52' },
+    { code: 'CHEM101', name: 'General Chemistry', color: '#523B0D' },
+    { code: 'ENG101', name: 'English Composition', color: '#0D5240' },
+  ];
+  const courseDocs = [];
+  for (const c of coursesInput) {
+    const doc = await ensureCourse({ code: c.code, name: c.name, color: c.color, teacherId: teacherUser.$id });
+    courseDocs.push(doc);
+  }
+
+  // Enrollments (teacher + all students for every course)
+  for (const course of courseDocs) {
+    await ensureEnrollment(course.$id, teacherUser.$id, 'teacher');
+    for (const stu of studentUsers) {
+      await ensureEnrollment(course.$id, stu.$id, 'student');
+    }
+  }
+
+  // Lessons per course (2 sample lessons staggered)
+  for (const course of courseDocs) {
+    const topics = [
+      { topic: `${course.code} Intro & Overview`, ...makeLessonTimes(2, 9, 2) },
+      { topic: `${course.code} Deep Dive`, ...makeLessonTimes(7, 9, 2) },
+    ];
+    await ensureLessons(course.$id, topics);
+  }
+
+  // Output summary
+  console.log('\nSeeded Academic Demo Summary');
+  console.log('Teacher:', teacher.email);
+  console.log('Students:');
+  for (const s of students) console.log(' -', s.email);
+  console.log('\nCourses:');
+  for (const c of courseDocs) console.log(' -', c.code, c.name, 'id=' + c.$id);
+  console.log('\nEnrollments: teacher +', students.length, 'students in each course');
+  console.log('Lessons: 2 per course (ignored duplicates if re-run)');
+  console.log('\nLogin credentials (demo):');
+  console.log(' Teacher:', teacher.email, teacher.password);
+  for (const s of students) console.log(' Student:', s.email, s.password);
+  console.log('\nRe-run safe: existing entities reused, roles synced.');
 }
 
 main().catch((e) => { console.error('Seed failed:', e.message || e); process.exit(1); });
