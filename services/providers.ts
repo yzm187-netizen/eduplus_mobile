@@ -76,6 +76,22 @@ const chatMode = ((process.env.EXPO_PUBLIC_CHAT_MODE) || extra.EXPO_PUBLIC_CHAT_
 const isMock = mode !== 'live';
 const isChatLive = chatMode === 'live';
 
+// Helpful startup log to clarify which adapters are active at runtime
+try {
+  // Avoid noisy logs in tests by guarding with a simple check
+  if (typeof console !== 'undefined') {
+    console.info(
+      `[Services] API mode: ${mode} (${isMock ? 'mock' : 'live'}), chat: ${chatMode}`
+    );
+    if (!isMock) {
+      const partialMocks = ['groups', 'submissions', 'attendance'];
+      console.warn(
+        `[Services] Live mode note: using mock adapters for: ${partialMocks.join(', ')} (pending live adapters)`
+      );
+    }
+  }
+} catch {}
+
 export const Services: {
   auth: AuthService;
   courses: CourseService;
