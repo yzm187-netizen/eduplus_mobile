@@ -18,13 +18,14 @@ const { Client, Users, Databases, ID } = require('node-appwrite');
 const {
   APPWRITE_ENDPOINT,
   APPWRITE_PROJECT,
+  APPWRITE_PROJECT_ID, // alternative name
   APPWRITE_API_KEY,
   APPWRITE_DATABASE_ID,
 } = process.env;
 
 function req(k, v) { if (!v) throw new Error(`Missing env ${k}`); return v; }
 const endpoint = req('APPWRITE_ENDPOINT', APPWRITE_ENDPOINT || process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT);
-const project = req('APPWRITE_PROJECT', APPWRITE_PROJECT || process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID);
+const project = req('APPWRITE_PROJECT', APPWRITE_PROJECT || APPWRITE_PROJECT_ID || process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID);
 const apiKey = req('APPWRITE_API_KEY', APPWRITE_API_KEY);
 const DB_ID = req('APPWRITE_DATABASE_ID', APPWRITE_DATABASE_ID || process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID);
 
@@ -159,6 +160,7 @@ async function ensureLessons(courseId, topics) {
 }
 
 async function main() {
+  console.log('[seed] Target:', { endpoint, project, DB_ID });
   // Accounts (teacher + students)
   const teacher = { name: 'Dr. Adrian Tan', email: 'adrian.tan@newinti.edu.my', password: 'EduPlus!Teacher123' };
   const students = [

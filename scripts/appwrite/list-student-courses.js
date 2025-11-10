@@ -13,6 +13,7 @@ if (!email) { console.error('Provide --email'); process.exit(1); }
 const {
   APPWRITE_ENDPOINT,
   APPWRITE_PROJECT,
+  APPWRITE_PROJECT_ID,
   APPWRITE_API_KEY,
   APPWRITE_DATABASE_ID,
   EXPO_PUBLIC_APPWRITE_ENDPOINT,
@@ -22,7 +23,7 @@ const {
 
 function req(k, v) { if (!v) throw new Error(`Missing env ${k}`); return v; }
 const endpoint = req('APPWRITE_ENDPOINT', APPWRITE_ENDPOINT || EXPO_PUBLIC_APPWRITE_ENDPOINT);
-const project = req('APPWRITE_PROJECT', APPWRITE_PROJECT || EXPO_PUBLIC_APPWRITE_PROJECT_ID);
+const project = req('APPWRITE_PROJECT', APPWRITE_PROJECT || APPWRITE_PROJECT_ID || EXPO_PUBLIC_APPWRITE_PROJECT_ID);
 const apiKey = req('APPWRITE_API_KEY', APPWRITE_API_KEY);
 const DB_ID = req('APPWRITE_DATABASE_ID', APPWRITE_DATABASE_ID || EXPO_PUBLIC_APPWRITE_DATABASE_ID);
 

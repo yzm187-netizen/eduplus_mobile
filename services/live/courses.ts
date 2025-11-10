@@ -30,6 +30,9 @@ export const liveCourses: CourseService = {
       Query.equal('userId', [user.id]),
       Query.equal('status', ['active']),
     ]);
+    if (__DEV__) {
+      console.info('[liveCourses] enrollments total', enr.total, 'for user', user.id);
+    }
     const courseIds: string[] = Array.from(new Set(enr.documents.map((d: any) => d.courseId)));
 
     // Fetch courses by id in chunks
@@ -38,20 +41,22 @@ export const liveCourses: CourseService = {
     for (let i = 0; i < courseIds.length; i += chunkSize) {
       const chunk = courseIds.slice(i, i + chunkSize);
       if (chunk.length === 0) continue;
-  const res = await databases.listDocuments(DB_ID, COL_COURSES, [Query.equal('$id', chunk)]);
+      const res = await databases.listDocuments(DB_ID, COL_COURSES, [Query.equal('$id', chunk)]);
       results.push(...res.documents);
     }
 
     // Teacher-owned courses (optional)
     try {
-  const tRes = await databases.listDocuments(DB_ID, COL_COURSES, [Query.contains('teacherIds', [user.id])]);
+      const tRes = await databases.listDocuments(DB_ID, COL_COURSES, [Query.contains('teacherIds', [user.id])]);
       for (const d of tRes.documents as any[]) {
         if (!results.find((r) => r.$id === d.$id)) results.push(d);
       }
+      if (__DEV__) console.info('[liveCourses] teacher-owned extra', tRes.total);
     } catch {
       // contains may not be available in older Appwrite; ignore for now
     }
 
+    if (__DEV__) console.info('[liveCourses] resolved courseIds', courseIds.length, 'final results', results.length);
     return results.map(mapCourse);
   },
 
