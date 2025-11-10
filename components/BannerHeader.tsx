@@ -17,6 +17,7 @@ export interface BannerHeaderProps {
   backgroundAnchorX?: 'left' | 'center' | 'right'; // anchor horizontal focus when scaling
   backgroundAnchorY?: 'top' | 'center' | 'bottom'; // anchor vertical focus when scaling
   backgroundMode?: 'cover' | 'contain'; // control resize mode; contain prevents stretching
+  showText?: boolean; // toggle foreground text/logo layer
 }
 
 // Generic banner header that layers background and text assets with optional children overlay
@@ -35,6 +36,7 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
   backgroundAnchorX = 'center',
   backgroundAnchorY = 'center',
   backgroundMode = 'contain',
+  showText = true,
 }) => {
   let bg: any = null;
   let textImg: any = null;
@@ -94,7 +96,7 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
           ]}
         />
       )}
-      {textImg && (
+      {showText && textImg && (
         <ExpoImage
           source={textImg}
           contentFit="contain"
