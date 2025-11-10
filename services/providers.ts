@@ -69,8 +69,10 @@ const liveSchedule: ScheduleService = {
   async createLesson() { throw new Error('live createLesson not implemented'); },
 };
 
-const mode = (process.env.EXPO_PUBLIC_API_MODE ?? 'mock').toLowerCase();
-const chatMode = (process.env.EXPO_PUBLIC_CHAT_MODE ?? mode).toLowerCase();
+import Constants from 'expo-constants';
+const extra = (Constants.expoConfig?.extra || {}) as any;
+const mode = ((process.env.EXPO_PUBLIC_API_MODE) || extra.EXPO_PUBLIC_API_MODE || 'mock').toLowerCase();
+const chatMode = ((process.env.EXPO_PUBLIC_CHAT_MODE) || extra.EXPO_PUBLIC_CHAT_MODE || mode).toLowerCase();
 const isMock = mode !== 'live';
 const isChatLive = chatMode === 'live';
 

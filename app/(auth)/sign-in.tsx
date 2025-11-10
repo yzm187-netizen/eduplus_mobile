@@ -20,7 +20,7 @@ export default function SignInScreen() {
     if (!email || !password) return Alert.alert('Missing info', 'Enter email and password');
     setLoading(true);
     try {
-      const user = await Services.auth.signIn(email.trim(), password);
+  const user = await Services.auth.signIn(email.trim(), password.trim());
       setUser({ id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: avatarUrl(user.id, 128) });
       if (user.role === 'teacher' || user.role === 'admin') {
         router.replace('/(teacher)/(tabs)/home' as any);
@@ -41,9 +41,15 @@ export default function SignInScreen() {
             }
           }
         } catch {}
+      } else if (/invalid credentials/i.test(msg)) {
+        console.warn('Invalid credentials during sign-in');
+        Alert.alert(
+          'Invalid credentials',
+          'Please double-check your email and password. If this persists, confirm the app is pointed to the right Appwrite project.'
+        );
       } else {
-        console.error(e);
-        Alert.alert('Sign-in failed', msg || 'Please check your credentials');
+        console.error('Sign-in failed', e);
+        Alert.alert('Sign-in failed', msg || 'An unexpected error occurred');
       }
     } finally {
       setLoading(false);
