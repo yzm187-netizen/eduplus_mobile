@@ -56,9 +56,7 @@ export default function SignInScreen() {
     }
   }, [email, password, loading, router, setUser]);
 
-  const onContinueAsStudent = () => {
-    setUser({ id: 'u-student-1', name: 'Student', email: email || 'you@example.com', role: 'student', avatarUrl: avatarUrl('u-student-1', 128) });
-  };
+  // Live-only: remove mock sign-in path
 
   return (
   <SafeAreaView className="flex-1 bg-white dark:bg-[#0E021F]">
@@ -145,10 +143,7 @@ export default function SignInScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Mock sign-in helper */}
-          <TouchableOpacity onPress={onContinueAsStudent} className="mt-4 rounded-lg py-3 items-center border border-neutral-700">
-            <Text className="font-semibold text-white">Continue as student (mock)</Text>
-          </TouchableOpacity>
+          {/* Live only: no mock sign-in */}
         </View>
       </View>
     </SafeAreaView>

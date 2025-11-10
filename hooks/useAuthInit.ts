@@ -18,6 +18,8 @@ export function useAuthInit() {
       } catch {
         if (!cancelled) useAuthStore.getState().signOut();
       }
+      // mark auth boot complete
+      if (!cancelled) useAuthStore.getState().setBooted(true);
     })();
     return () => { cancelled = true; };
   }, []);

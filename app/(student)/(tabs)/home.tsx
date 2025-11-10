@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo as useReactMemo } from 'react';
 import { View, Text, ScrollView, Pressable, RefreshControl, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useState } from 'react';
@@ -8,6 +8,8 @@ import type { Course, Notification as Notify, AssignmentRef } from '@/data/sampl
 import { formatRelativeShort } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
 import { BannerHeader } from '@/components/BannerHeader';
+import { useAuthStore } from '@/store/useAuthStore';
+import { avatarUrl } from '@/utils/imagePlaceholders';
 import { courseBanner } from '@/utils/imagePlaceholders';
 
 export default function StudentHomeScreen() {
@@ -60,28 +62,55 @@ export default function StudentHomeScreen() {
       ]
     : [];
 
+  const user = useAuthStore((s) => s.user);
+  const firstName = useReactMemo(() => {
+    if (!user?.name) return 'Student';
+    return user.name.split(/\s+/)[0];
+  }, [user?.name]);
+  const profileAvatar = useReactMemo(() => avatarUrl(user?.id || 'x', 96), [user?.id]);
+
   return (
     <SafeAreaView className="flex-1 bg-neutral-50 dark:bg-black">
-      {/* Banner header with overlay greeting */}
-      <BannerHeader>
-        <View>
-          <Text className="text-3xl font-extrabold text-white">Welcome 👋</Text>
-          <Text className="text-white/80 mt-1">Here’s your snapshot</Text>
+      {/* Banner header shorter (height 188), full-width, zoomed-out & shifted to reveal gradient */}
+      <BannerHeader
+        height={188}
+        childrenPosition="top"
+        textShift={-32}
+      >
+        <View className="flex-row items-start justify-between">
+          <View className="pr-4" style={{ maxWidth: '70%' }}>
+            <Text className="text-3xl font-extrabold text-white" numberOfLines={1}>Welcome, {firstName}</Text>
+          </View>
+          <View className="items-end">
+            <Pressable onPress={() => router.push('/(student)/(tabs)/profile' as any)}>
+              <Image
+                source={{ uri: profileAvatar }}
+                style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: '#00AFC8' }}
+              />
+            </Pressable>
+            {user?.role ? (
+              <Text className="text-xs mt-2 px-2 py-1 rounded-full bg-white/15 text-white" style={{ overflow: 'hidden' }}>
+                {user.role.toUpperCase()}
+              </Text>
+            ) : null}
+          </View>
         </View>
       </BannerHeader>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32, paddingTop: 200 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
         className="px-4"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Metrics cards overlapping header */}
-        <View className="flex-row gap-3 mb-6 -mt-24">
+  {/* Spacer to push content below banner and allow slight overlap */}
+  <View style={{ height: 164 }} />
+  {/* Metrics cards slight overlap */}
+  <View className="flex-row gap-3 mb-6 -mt-6">
           {metrics.slice(0, 3).map((m) => (
             <View key={m.label} className="flex-1 rounded-2xl p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
               <View className="flex-row items-center gap-2 mb-1">
-                {m.label === 'Due soon' && <Ionicons name="time-outline" size={18} color="#10b981" />}
-                {m.label === 'Completed' && <Ionicons name="checkmark-done-outline" size={18} color="#10b981" />}
-                {m.label === 'Study hrs' && <Ionicons name="school-outline" size={18} color="#10b981" />} 
+                {m.label === 'Due soon' && <Ionicons name="time-outline" size={18} color="#00AFC8" />}
+                {m.label === 'Completed' && <Ionicons name="checkmark-done-outline" size={18} color="#00AFC8" />}
+                {m.label === 'Study hrs' && <Ionicons name="school-outline" size={18} color="#00AFC8" />}
                 <Text className="text-neutral-500 dark:text-neutral-400">{m.label}</Text>
               </View>
               <Text className="text-2xl font-bold">{m.value}</Text>

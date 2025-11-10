@@ -14,6 +14,8 @@ type AuthState = {
   user: User | null;
   setUser: (user: User | null) => void;
   signOut: () => void;
+  booted: boolean;
+  setBooted: (v: boolean) => void;
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -22,11 +24,13 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       setUser: (user) => set({ user }),
       signOut: () => set({ user: null }),
+      booted: false,
+      setBooted: (v) => set({ booted: v }),
     }),
     {
       name: 'auth',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ user: state.user }),
+      partialize: (state) => ({ user: state.user, booted: state.booted }),
     }
   )
 );
