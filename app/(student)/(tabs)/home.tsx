@@ -78,6 +78,7 @@ export default function StudentHomeScreen() {
         textShift={-32}
          showText={false}
         backgroundMode="cover"
+        backgroundAnchorY="top"
       >
         <View className="flex-row items-start justify-between">
           <View className="pr-4" style={{ maxWidth: '70%' }}>

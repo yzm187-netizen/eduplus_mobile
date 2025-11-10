@@ -62,6 +62,19 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
   };
   const { tx, ty } = translateFromAnchor();
 
+  // Derive centering/anchoring for the background image inside the container
+  const contentPosition = (
+    backgroundAnchorY === 'top' && backgroundAnchorX === 'left' ? 'top-left' :
+    backgroundAnchorY === 'top' && backgroundAnchorX === 'right' ? 'top-right' :
+    backgroundAnchorY === 'bottom' && backgroundAnchorX === 'left' ? 'bottom-left' :
+    backgroundAnchorY === 'bottom' && backgroundAnchorX === 'right' ? 'bottom-right' :
+    backgroundAnchorY === 'top' ? 'top' :
+    backgroundAnchorY === 'bottom' ? 'bottom' :
+    backgroundAnchorX === 'left' ? 'left' :
+    backgroundAnchorX === 'right' ? 'right' :
+    'center'
+  ) as any;
+
   return (
     <View
       style={[
@@ -83,7 +96,7 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
         <ExpoImage
           source={bg}
           contentFit={backgroundMode}
-          contentPosition="center"
+          contentPosition={contentPosition}
           style={[
             StyleSheet.absoluteFillObject,
             (backgroundScale !== 1 || backgroundShiftX || backgroundShiftY)
