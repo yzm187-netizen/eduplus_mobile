@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 
-interface BannerHeaderProps {
+export interface BannerHeaderProps {
   height?: number; // pixel height of banner area
   children?: React.ReactNode; // overlay content (texts, metrics, etc.)
   paddingHorizontal?: number; // horizontal inset for overlay
@@ -77,9 +78,10 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
       }}
     >
       {bg && (
-        <Image
+        <ExpoImage
           source={bg}
-          resizeMode={backgroundMode}
+          contentFit={backgroundMode}
+          contentPosition="center"
           style={[
             StyleSheet.absoluteFillObject,
             (backgroundScale !== 1 || backgroundShiftX || backgroundShiftY)
@@ -93,9 +95,10 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
         />
       )}
       {textImg && (
-        <Image
+        <ExpoImage
           source={textImg}
-          resizeMode="contain"
+          contentFit="contain"
+          contentPosition="center"
           style={[
             StyleSheet.absoluteFillObject,
             { left: paddingHorizontal, right: paddingHorizontal },

@@ -76,6 +76,7 @@ export default function StudentHomeScreen() {
         height={188}
         childrenPosition="top"
         textShift={-32}
+         showText={false}
         backgroundMode="contain"
       >
         <View className="flex-row items-start justify-between">
