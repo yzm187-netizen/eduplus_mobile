@@ -1,4 +1,4 @@
-// Seed one teacher (Alice Smith), one student (Brian Lee), and one course (MATH101 Calculus I)
+// Seed one teacher (Dr. Adrian Tan), one student (Alice Smith), and one course (MATH101 Calculus I)
 // - Creates Appwrite auth accounts (email+password)
 // - Creates matching profile docs (id = account $id)
 // - Creates a course owned by teacher (teacherIds = [aliceId])
@@ -88,8 +88,8 @@ async function upsertProfile({ id, name, email, role }) {
 
 async function main() {
   // Accounts
-  const teacher = { name: 'Alice Smith', email: 'alice.smith@eduplus.test', password: 'EduPlus!Alice123' };
-  const student = { name: 'Brian Lee', email: 'brian.lee@eduplus.test', password: 'EduPlus!Brian123' };
+  const teacher = { name: 'Dr. Adrian Tan', email: 'adrian.tan@newinti.edu.my', password: 'EduPlus!Teacher123' };
+  const student = { name: 'Alice Smith', email: 'alice.smith@student.newinti.edu.my', password: 'EduPlus!Alice123' };
 
   // Create/find teacher
   let t = await findUserByEmail(teacher.email);
