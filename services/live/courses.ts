@@ -25,9 +25,10 @@ export const liveCourses: CourseService = {
     if (!user) return [];
 
     // Student enrollments
+    // Appwrite Query.equal expects array values; previously passed raw string which can yield empty results.
     const enr = await databases.listDocuments(DB_ID, COL_ENROLLMENTS, [
-      Query.equal('userId', user.id),
-      Query.equal('status', 'active'),
+      Query.equal('userId', [user.id]),
+      Query.equal('status', ['active']),
     ]);
     const courseIds: string[] = Array.from(new Set(enr.documents.map((d: any) => d.courseId)));
 
@@ -37,13 +38,13 @@ export const liveCourses: CourseService = {
     for (let i = 0; i < courseIds.length; i += chunkSize) {
       const chunk = courseIds.slice(i, i + chunkSize);
       if (chunk.length === 0) continue;
-      const res = await databases.listDocuments(DB_ID, COL_COURSES, [Query.equal('$id', chunk)]);
+  const res = await databases.listDocuments(DB_ID, COL_COURSES, [Query.equal('$id', chunk)]);
       results.push(...res.documents);
     }
 
     // Teacher-owned courses (optional)
     try {
-      const tRes = await databases.listDocuments(DB_ID, COL_COURSES, [Query.contains('teacherIds', [user.id])]);
+  const tRes = await databases.listDocuments(DB_ID, COL_COURSES, [Query.contains('teacherIds', [user.id])]);
       for (const d of tRes.documents as any[]) {
         if (!results.find((r) => r.$id === d.$id)) results.push(d);
       }
