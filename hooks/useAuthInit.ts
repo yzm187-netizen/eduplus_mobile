@@ -1,10 +1,24 @@
 import { useEffect } from 'react';
+import { Services } from '@/services/providers';
+import { useAuthStore } from '@/store/useAuthStore';
 
-// Keep auth initialization side-effect free until a real backend is wired.
-// This hook intentionally does nothing so the app can render the sign-in UI
-// without attempting any network calls or mock behavior.
+// On app start, probe session and set the user accordingly.
+// If no session, ensure local store is cleared so index routes to sign-in.
 export function useAuthInit() {
   useEffect(() => {
-    // no-op
+    let cancelled = false;
+    (async () => {
+      try {
+        const user = await Services.auth.getSession();
+        if (cancelled) return;
+        if (!user) {
+          // clear any stale persisted user
+          useAuthStore.getState().signOut();
+        }
+      } catch {
+        if (!cancelled) useAuthStore.getState().signOut();
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 }

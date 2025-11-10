@@ -1,0 +1,46 @@
+{
+  "title": "User Research Fundamentals",
+  "courseId": "c-cs305",
+  "theme": { "accent": "#6366f1" },
+  "slides": [
+    { "type": "title", "title": "User Research Fundamentals", "subtitle": "Diploma UX Design" },
+    {
+      "type": "bullets",
+      "title": "Agenda",
+      "items": [
+        "Research goals and questions",
+        "Interviews vs surveys",
+        "Recruiting and consent",
+        "Avoiding leading prompts",
+        "Note-taking and synthesis"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Interviews vs Surveys",
+      "items": [
+        "Interviews: depth, why/how, small N",
+        "Surveys: breadth, what/how-many, larger N",
+        "Choose based on decisions you need to make"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Leading vs Neutral Prompts",
+      "items": [
+        "Leading: 'How easy was the checkout?'",
+        "Neutral: 'Walk me through your last checkout—what stood out?'",
+        "Practice neutral phrasing; avoid pushing answers"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Synthesis (Affinity Mapping)",
+      "items": [
+        "Cluster notes into themes",
+        "Label groups and derive insights",
+        "Link insights to opportunities"
+      ]
+    }
+  ]
+}

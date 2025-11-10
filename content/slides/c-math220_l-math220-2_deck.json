@@ -1,0 +1,35 @@
+{
+  "title": "Hypothesis Testing",
+  "courseId": "c-math220",
+  "theme": { "accent": "#f59e0b" },
+  "slides": [
+    { "type": "title", "title": "Hypothesis Testing", "subtitle": "BSc Computer Science" },
+    {
+      "type": "bullets",
+      "title": "Core Concepts",
+      "items": [
+        "Null vs alternative hypothesis",
+        "Type I/II errors",
+        "p-values and effect size"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "t-test Overview",
+      "items": [
+        "Assumptions",
+        "Test statistic",
+        "Interpretation"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Pitfalls",
+      "items": [
+        "p-hacking",
+        "Misinterpreting p-values",
+        "Ignoring assumptions"
+      ]
+    }
+  ]
+}

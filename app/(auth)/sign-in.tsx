@@ -1,40 +1,95 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// import { BrandBanner } from '@/components/Brand';
+import { useAuthStore } from '@/store/useAuthStore';
+import { avatarUrl } from '@/utils/imagePlaceholders';
+import { Services } from '@/services/providers';
+import { useRouter } from 'expo-router';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const setUser = useAuthStore((s) => s.setUser);
+  const router = useRouter();
 
-  const onSignIn = async () => {
+  const onSignIn = useCallback(async () => {
+    if (loading) return; // guard against double taps
     if (!email || !password) return Alert.alert('Missing info', 'Enter email and password');
-    // No backend wired yet: show a friendly placeholder
-    Alert.alert('Not connected', 'Auth will be hooked up here once configured.');
+    setLoading(true);
+    try {
+      const user = await Services.auth.signIn(email.trim(), password);
+      setUser({ id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: avatarUrl(user.id, 128) });
+      if (user.role === 'teacher' || user.role === 'admin') {
+        router.replace('/(teacher)/(tabs)/home' as any);
+      } else {
+        router.replace('/(student)/(tabs)/home' as any);
+      }
+    } catch (e: any) {
+      const msg = e?.message || '';
+      if (/session is active/i.test(msg)) {
+        Alert.alert('Already signed in', 'You already have an active session. Proceeding.');
+        try {
+          const user = useAuthStore.getState().user;
+          if (user) {
+            if (user.role === 'teacher' || user.role === 'admin') {
+              router.replace('/(teacher)/(tabs)/home' as any);
+            } else {
+              router.replace('/(student)/(tabs)/home' as any);
+            }
+          }
+        } catch {}
+      } else {
+        console.error(e);
+        Alert.alert('Sign-in failed', msg || 'Please check your credentials');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [email, password, loading, router, setUser]);
+
+  const onContinueAsStudent = () => {
+    setUser({ id: 'u-student-1', name: 'Student', email: email || 'you@example.com', role: 'student', avatarUrl: avatarUrl('u-student-1', 128) });
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50 dark:bg-black">
-      {/* Top accent background */}
-      <View className="absolute top-0 left-0 right-0 h-56 bg-emerald-600 dark:bg-emerald-700 rounded-b-3xl" />
+  <SafeAreaView className="flex-1 bg-white dark:bg-[#0E021F]">
+      {/* Header banner fills rounded rectangle */}
+      <View className="absolute top-0 left-0 right-0 h-56 rounded-b-3xl overflow-hidden">
+        {/* Background layer (fills entirely) */}
+        {(() => {
+          let bg: any;
+          try { bg = require('../../assets/images/EduPlus_Banner_background.png'); } catch { bg = null; }
+          return bg ? (
+            <Image source={bg} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+          ) : null;
+        })()}
+        {/* Text/logo layer (contained with horizontal margins) */}
+        {(() => {
+          let textImg: any;
+          try { textImg = require('../../assets/images/EduPlus_Banner_text.png'); } catch { textImg = null; }
+          return textImg ? (
+            <View className="absolute inset-0 px-6">
+              <Image source={textImg} resizeMode="contain" style={{ width: '100%', height: '100%' }} />
+            </View>
+          ) : null;
+        })()}
+      </View>
 
       <View className="flex-1 items-center justify-center px-6">
         {/* Card */}
-        <View className="w-full max-w-sm rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 pt-8 shadow-xl">
-          {/* Overlapping logo bubble */}
-          <View className="absolute -top-8 self-center h-16 w-16 rounded-2xl bg-white dark:bg-neutral-900 items-center justify-center shadow-lg border border-neutral-200 dark:border-neutral-800">
-            <Text className="text-emerald-600 font-extrabold text-xl">E+</Text>
-          </View>
+  <View className="w-full max-w-sm rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 pt-8 shadow-xl">
 
-          <Text className="text-center text-3xl font-extrabold tracking-tight mt-2 mb-1">Welcome back</Text>
+          <Text className="text-center text-3xl font-extrabold tracking-tight mt-2 mb-1 text-neutral-900 dark:text-white">Welcome back</Text>
           <Text className="text-center text-neutral-500 dark:text-neutral-400 mb-6">Sign in to your account</Text>
 
           {/* Email */}
           <View className="mb-4">
-            <Text className="mb-2 text-sm text-neutral-600 dark:text-neutral-300">Email</Text>
+            <Text className="mb-2 text-sm text-neutral-700 dark:text-neutral-300">Email</Text>
             <TextInput
-              className="border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 bg-white dark:bg-neutral-800"
+              className="border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
@@ -47,9 +102,9 @@ export default function SignInScreen() {
 
           {/* Password */}
           <View className="mb-2">
-            <Text className="mb-2 text-sm text-neutral-600 dark:text-neutral-300">Password</Text>
+            <Text className="mb-2 text-sm text-neutral-700 dark:text-neutral-300">Password</Text>
             <TextInput
-              className="border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 bg-white dark:bg-neutral-800"
+              className="border border-neutral-300 dark:border-neutral-700 rounded-lg px-4 py-3 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
               placeholder="Your password"
               placeholderTextColor="#9CA3AF"
               secureTextEntry={!showPassword}
@@ -60,14 +115,15 @@ export default function SignInScreen() {
 
           {/* Show password toggle */}
           <TouchableOpacity onPress={() => setShowPassword((s) => !s)}>
-            <Text className="text-right text-xs text-neutral-500 mb-3">{showPassword ? 'Hide password' : 'Show password'}</Text>
+            <Text className="text-right text-xs text-neutral-600 dark:text-neutral-400 mb-3">{showPassword ? 'Hide password' : 'Show password'}</Text>
           </TouchableOpacity>
 
           {/* Submit */}
           <TouchableOpacity
-            className="bg-emerald-600 dark:bg-emerald-500 rounded-lg py-3 items-center mb-2 disabled:opacity-60"
+            className="rounded-lg py-3 items-center mb-2 disabled:opacity-60"
             disabled={loading}
             onPress={onSignIn}
+            style={{ backgroundColor: '#00AFC8' }}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -76,15 +132,17 @@ export default function SignInScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Secondary link placeholders */}
-          <View className="flex-row justify-between mt-2">
-            <TouchableOpacity onPress={() => Alert.alert('Forgot password', 'Not implemented yet')}>
-              <Text className="text-sm text-neutral-600 dark:text-neutral-300">Forgot password?</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => Alert.alert('Sign up', 'Sign up flow coming soon')}>
-              <Text className="text-sm text-emerald-600">Create account</Text>
+          {/* Secondary action: forgot password only (accounts provisioned by institution) */}
+          <View className="flex-row justify-end mt-2">
+            <TouchableOpacity onPress={() => Alert.alert('Forgot password', 'Contact your school administrator to reset your password.') }>
+              <Text className="text-sm text-neutral-300">Forgot password?</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Mock sign-in helper */}
+          <TouchableOpacity onPress={onContinueAsStudent} className="mt-4 rounded-lg py-3 items-center border border-neutral-700">
+            <Text className="font-semibold text-white">Continue as student (mock)</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>

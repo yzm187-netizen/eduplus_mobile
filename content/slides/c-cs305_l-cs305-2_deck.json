@@ -1,0 +1,35 @@
+{
+  "title": "Prototyping Best Practices",
+  "courseId": "c-cs305",
+  "theme": { "accent": "#6366f1" },
+  "slides": [
+    { "type": "title", "title": "Prototyping Best Practices", "subtitle": "Diploma UX Design" },
+    {
+      "type": "bullets",
+      "title": "Fidelity Spectrum",
+      "items": [
+        "Paper → Low-fi → Mid-fi → High-fi",
+        "Choose fidelity based on risk",
+        "Iterate quickly"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Heuristics",
+      "items": [
+        "Consistency and standards",
+        "Visibility of system status",
+        "Error prevention"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Quick Usability Test",
+      "items": [
+        "Define tasks",
+        "Observe, don’t lead",
+        "Capture issues and insights"
+      ]
+    }
+  ]
+}

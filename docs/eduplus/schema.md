@@ -28,6 +28,8 @@ Permissions: students enrolled can read; teacher/admin write (enforced by server
 - courseId (string, required)
 - title (string, required)
 - dueAt (datetime, required)
+- createdAt (datetime, default now)
+- description (string, optional)
 Indexes: courseId (key), dueAt (key)
 
 4) groups
@@ -78,6 +80,19 @@ Indexes: assignmentId (key), userId (key), groupId (key)
 - title (string)
 Indexes: courseId (key), groupId (key)
 
+10) section_tasks (hierarchical checklist per assignment section)
+- assignmentId (string, required)
+- sectionKey (string, required)
+- parentId (string, optional)
+- title (string, required)
+- done (boolean, default false)
+- order (number, default 0)
+- path (string[], required)  // ancestor ids from root to this node for fast reads
+- depth (number, optional)   // denormalized for UI
+- createdAt, updatedAt (datetime)
+Indexes: (assignmentId, sectionKey), (assignmentId, sectionKey, parentId)
+Permissions: students on that assignment can read/write their own tasks; teachers read and optionally write for oversight.
+
 ## Permissions model (practical guide)
 - Prefer document-level permissions; attribute-level ACLs are not available.
 - Profiles: owner read/write; admins full; teachers read students they teach (enforced via backend or rules when possible).
@@ -85,10 +100,15 @@ Indexes: courseId (key), groupId (key)
 - Groups/Messages/Progress: members and teacher can read; author or teacher can write.
 - Storage: avatars can be public-read; submissions/attachments must be auth-read.
 
+Role handling & route guards
+- Profiles.role determines which tab group mounts (student vs teacher). Store role in session state after sign-in and guard routes accordingly.
+- Teacher-only actions (e.g., create assignment) are hidden in UI and enforced in backend permissions.
+
 ## Indexing tips
 - Always index foreign keys you filter on: courseId, teacherId, assignmentId, groupId, userId.
 - Create a composite index for time-ordered feeds per scope, e.g., (groupId, createdAt).
 - Use unique indexes for natural keys like course code, email.
+ - For hierarchical tasks, index (assignmentId, sectionKey, parentId) and consider a path prefix strategy if deeply nested queries are needed.
 
 ## Why no passwordHash column?
 Appwrite Auth manages credentials securely. Storing password hashes in a custom collection is redundant and risky. Use the built-in Users + Sessions APIs and keep only profile metadata in `profiles`.

@@ -1,0 +1,35 @@
+{
+  "title": "Descriptive Statistics",
+  "courseId": "c-math220",
+  "theme": { "accent": "#f59e0b" },
+  "slides": [
+    { "type": "title", "title": "Descriptive Statistics", "subtitle": "BSc Computer Science" },
+    {
+      "type": "bullets",
+      "title": "Central Tendency",
+      "items": [
+        "Mean, median, mode",
+        "Median is robust to outliers",
+        "Choose based on distribution"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Spread",
+      "items": [
+        "Variance and standard deviation",
+        "Interquartile range",
+        "Skew and outliers"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Boxplots",
+      "items": [
+        "Quartiles and median",
+        "Whiskers",
+        "Interpretation tips"
+      ]
+    }
+  ]
+}

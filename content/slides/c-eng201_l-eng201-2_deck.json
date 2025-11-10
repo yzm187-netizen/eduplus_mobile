@@ -1,0 +1,35 @@
+{
+  "title": "Citation and Academic Integrity",
+  "courseId": "c-eng201",
+  "theme": { "accent": "#10b981" },
+  "slides": [
+    { "type": "title", "title": "Citation and Academic Integrity", "subtitle": "BSc Computer Science" },
+    {
+      "type": "bullets",
+      "title": "When to Cite",
+      "items": [
+        "Ideas, data, and exact quotes",
+        "Paraphrased content",
+        "Non-common knowledge"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "APA 7th Essentials",
+      "items": [
+        "Author–date in-text",
+        "Reference list formatting",
+        "Consistent punctuation and italics"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Academic Integrity",
+      "items": [
+        "Paraphrase vs quoting",
+        "Avoid plagiarism and self-plagiarism",
+        "Use citation managers responsibly"
+      ]
+    }
+  ]
+}

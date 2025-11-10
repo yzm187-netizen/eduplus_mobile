@@ -1,10 +1,12 @@
-import { View, Text } from 'react-native'
-import React from 'react'
+import React from 'react';
+import { Stack } from 'expo-router';
 
-export default function _layout() {
+export default function AuthLayout() {
+  // Provide a proper Stack for auth routes so the sign-in screen renders
   return (
-    <View>
-      <Text>Auth layout</Text>
-    </View>
-  )
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+      <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+    </Stack>
+  );
 }

@@ -1,15 +1,19 @@
 import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet } from 'react-native';
-
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import { useRouter } from 'expo-router';
 
 export default function ModalScreen() {
+  const router = useRouter();
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Modal</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/modal.tsx" />
+      <Card>
+        <Text style={styles.title}>Quick actions</Text>
+        <Text style={styles.subtitle}>This modal is a placeholder you can repurpose for app-wide shortcuts or settings.</Text>
+        <View style={{ height: 16 }} />
+        <Button title="Close" onPress={() => router.back()} />
+      </Card>
 
       {/* Use a light status bar on iOS to account for the black space above the modal */}
       <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
@@ -26,6 +30,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  subtitle: {
+    marginTop: 8,
+    color: '#6b7280',
   },
   separator: {
     marginVertical: 30,

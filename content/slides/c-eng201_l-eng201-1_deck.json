@@ -1,0 +1,35 @@
+{
+  "title": "Understanding Literature Reviews",
+  "courseId": "c-eng201",
+  "theme": { "accent": "#10b981" },
+  "slides": [
+    { "type": "title", "title": "Understanding Literature Reviews", "subtitle": "BSc Computer Science" },
+    {
+      "type": "bullets",
+      "title": "Purpose",
+      "items": [
+        "Map existing knowledge and gaps",
+        "Synthesize, don’t just summarize",
+        "Motivate your research direction"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Structure (Funnel)",
+      "items": [
+        "Broad context → narrowing themes",
+        "Recent and relevant works",
+        "Clear gap statement"
+      ]
+    },
+    {
+      "type": "bullets",
+      "title": "Common Pitfalls",
+      "items": [
+        "Annotated bibliography style",
+        "Missing synthesis across sources",
+        "Unclear criteria for relevance"
+      ]
+    }
+  ]
+}

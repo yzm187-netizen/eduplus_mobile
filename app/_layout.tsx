@@ -4,9 +4,18 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+// Using a simple View fallback gradient (replace with expo-linear-gradient if installed)
+import { View } from 'react-native';
+import { Logo } from '@/components/Brand';
 import 'react-native-reanimated';
+// Ensure NativeWind runtime is initialized early
+import 'nativewind';
+// Import Tailwind CSS for NativeWind (safe under app/; not treated as a route)
+import './globals.css';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { useAuthInit } from '@/hooks/useAuthInit';
 
@@ -25,7 +34,6 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
 
@@ -48,17 +56,23 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const system = useColorScheme();
+  const theme = useSettingsStore((s) => s.theme);
   useAuthInit();
 
   return (
-    <QueryProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
-      </ThemeProvider>
-    </QueryProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* Global brand gradient background (CSS-like fallback) */}
+      <View style={{ position:'absolute', inset:0, backgroundColor:'#2B0D52' }} />
+      <View style={{ position:'absolute', left:-80, top:80, width:240, height:240, borderRadius:120, backgroundColor:'rgba(0,175,200,0.35)' }} />
+      <QueryProvider>
+        <ThemeProvider value={(theme === 'dark' || (theme === 'system' && system === 'dark')) ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </Stack>
+        </ThemeProvider>
+      </QueryProvider>
+    </GestureHandlerRootView>
   );
 }

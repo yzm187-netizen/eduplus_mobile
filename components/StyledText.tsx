@@ -1,5 +1,5 @@
-import { Text, TextProps } from './Themed';
-
-export function MonoText(props: TextProps) {
-  return <Text {...props} style={[props.style, { fontFamily: 'SpaceMono' }]} />;
+// DEPRECATED: StyledText is not used; safe to delete. Kept as shim.
+import { Text } from 'react-native';
+export function MonoText(props: any) {
+  return <Text {...props} />;
 }

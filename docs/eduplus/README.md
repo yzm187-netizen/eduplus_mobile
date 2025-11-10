@@ -2,6 +2,9 @@
 
 This document captures the initial plan for EduPlus: a mobile-first LMS with richer analytics for teachers and clear progress tooling for students and groups.
 
+Note on configuration
+- See the root `README.md` → Configuration for how to switch between mock and live services and how the API base URL is read by the app.
+
 ## Goals
 - Student-centric experience: clear progress, assignments, notes, grades, attendance.
 - Teacher insights: high-signal dashboards across courses and within each course.
@@ -44,3 +47,4 @@ See companion docs:
 - flows.md – key flows (QR attendance, group project, messaging)
 - screens.md – IA, routes, component blocks
 - metrics.md – KPIs and visualizations
+ - description-format.md – teacher authoring guide for assignment descriptions
