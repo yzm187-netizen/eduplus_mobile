@@ -15,6 +15,7 @@ interface BannerHeaderProps {
   backgroundShiftY?: number; // shift background image vertically (px)
   backgroundAnchorX?: 'left' | 'center' | 'right'; // anchor horizontal focus when scaling
   backgroundAnchorY?: 'top' | 'center' | 'bottom'; // anchor vertical focus when scaling
+  backgroundMode?: 'cover' | 'contain'; // control resize mode; contain prevents stretching
 }
 
 // Generic banner header that layers background and text assets with optional children overlay
@@ -32,6 +33,7 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
   backgroundShiftY = 0,
   backgroundAnchorX = 'center',
   backgroundAnchorY = 'center',
+  backgroundMode = 'cover',
 }) => {
   let bg: any = null;
   let textImg: any = null;
@@ -77,7 +79,7 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
       {bg && (
         <Image
           source={bg}
-          resizeMode="cover"
+          resizeMode={backgroundMode}
           style={[
             StyleSheet.absoluteFillObject,
             (backgroundScale !== 1 || backgroundShiftX || backgroundShiftY)
