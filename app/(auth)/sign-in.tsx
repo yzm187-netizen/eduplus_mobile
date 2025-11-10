@@ -67,7 +67,7 @@ export default function SignInScreen() {
           let bg: any;
           try { bg = require('../../assets/images/EduPlus_Banner_background.png'); } catch { bg = null; }
           return bg ? (
-            <Image source={bg} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+            <Image source={bg} resizeMode="contain" style={{ width: '100%', height: '100%' }} />
           ) : null;
         })()}
         {/* Text/logo layer (contained with horizontal margins) */}
