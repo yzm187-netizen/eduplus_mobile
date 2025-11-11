@@ -71,7 +71,7 @@ export default function StudentHomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-50 dark:bg-black">
-      {/* Banner header shorter (height 188), full-width, zoomed-out & shifted to reveal gradient */}
+      {/* Banner header is in normal flow so it scrolls with content */}
       <BannerHeader
         height={188}
         childrenPosition="top"
@@ -79,6 +79,7 @@ export default function StudentHomeScreen() {
          showText={false}
         backgroundMode="cover"
         backgroundAnchorY="top"
+        floating
       >
         <View className="flex-row items-start justify-between">
           <View className="pr-4" style={{ maxWidth: '70%' }}>
@@ -100,12 +101,9 @@ export default function StudentHomeScreen() {
         </View>
       </BannerHeader>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
-        className="px-4"
+        contentContainerStyle={{ paddingBottom: 32, paddingHorizontal: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-  {/* Spacer to push content below banner and allow slight overlap */}
-  <View style={{ height: 164 }} />
   {/* Metrics cards slight overlap */}
   <View className="flex-row gap-3 mb-6 -mt-6">
           {metrics.slice(0, 3).map((m) => (

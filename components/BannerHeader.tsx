@@ -18,6 +18,7 @@ export interface BannerHeaderProps {
   backgroundAnchorY?: 'top' | 'center' | 'bottom'; // anchor vertical focus when scaling
   backgroundMode?: 'cover' | 'contain'; // control resize mode; contain prevents stretching
   showText?: boolean; // toggle foreground text/logo layer
+  floating?: boolean; // if true, do not absolutely position; let parent flow so it can scroll
 }
 
 // Generic banner header that layers background and text assets with optional children overlay
@@ -37,6 +38,7 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
   backgroundAnchorY = 'center',
   backgroundMode = 'contain',
   showText = true,
+  floating = false,
 }) => {
   let bg: any = null;
   let textImg: any = null;
@@ -79,12 +81,14 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
     <View
       style={[
         styles.container,
+        floating && { position: 'relative' },
         {
           height,
-          left: horizontalInset,
-          right: horizontalInset,
+          left: floating ? undefined : horizontalInset,
+          right: floating ? undefined : horizontalInset,
           borderBottomLeftRadius: rounded ? 24 : 0,
           borderBottomRightRadius: rounded ? 24 : 0,
+          top: floating ? undefined : 0,
         },
       ]}
       onLayout={(e) => {
@@ -147,6 +151,7 @@ const styles = StyleSheet.create({
     top: 0,
     overflow: 'hidden',
     backgroundColor: 'transparent',
+    width: '100%',
   },
 });
 
