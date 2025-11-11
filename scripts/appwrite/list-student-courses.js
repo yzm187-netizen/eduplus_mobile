@@ -3,7 +3,7 @@
 //   node scripts/appwrite/list-student-courses.js --email alice.smith@student.newinti.edu.my
 // Env required: APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY, APPWRITE_DATABASE_ID
 
-const { Client, Databases, Query } = require('node-appwrite');
+const { Client, Databases, Query, Users } = require('node-appwrite');
 
 const args = process.argv.slice(2);
 function getArg(flag) { const i = args.indexOf(flag); return i >= 0 ? args[i+1] : undefined; }
@@ -33,11 +33,25 @@ const COL_COURSES = 'courses';
 
 const client = new Client().setEndpoint(endpoint).setProject(project).setKey(apiKey);
 const db = new Databases(client);
+const users = new Users(client);
 
 (async () => {
   const profiles = await db.listDocuments(DB_ID, COL_PROFILES, [Query.equal('email', [email])]);
-  if (!profiles.total) throw new Error('No profile for ' + email);
-  const userId = profiles.documents[0].$id;
+  let userId;
+  if (!profiles.total) {
+    // Fallback: try Users API
+    try {
+      const list = await users.list();
+      const found = list.users.find(u => (u.email || '').toLowerCase() === email.toLowerCase());
+      if (!found) throw new Error('No profile and no user for ' + email);
+      userId = found.$id;
+      console.warn('No profile doc found; using Users account id', userId);
+    } catch (e) {
+      throw e;
+    }
+  } else {
+    userId = profiles.documents[0].$id;
+  }
   const enr = await db.listDocuments(DB_ID, COL_ENROLLMENTS, [Query.equal('userId', [userId]), Query.equal('status', ['active'])]);
   if (!enr.total) { console.log('No active enrollments for', email); return; }
   const courseIds = Array.from(new Set(enr.documents.map(d => d.courseId)));
