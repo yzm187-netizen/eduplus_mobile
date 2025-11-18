@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import CourseNav from '@/components/CourseNav';
 import { Services } from '@/services/providers';
+import { courseAccentColor } from '@/utils/courseColor';
 import type { AssignmentRef } from '@/data/sample';
 import { formatDateTime, formatRelativeShort } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ export default function CourseAssignmentsListScreen() {
   const id = String(courseId);
   const router = useRouter();
   const [items, setItems] = useState<AssignmentRef[]>([]);
+  const [accent, setAccent] = useState<string>('#00AFC8');
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -27,6 +27,12 @@ export default function CourseAssignmentsListScreen() {
 
   useEffect(() => {
     load();
+    (async () => {
+      try {
+        const c = await Services.courses.getCourse(id);
+        setAccent(courseAccentColor(c?.color));
+      } catch {}
+    })();
   }, [id]);
 
   const onRefresh = async () => {
@@ -104,16 +110,10 @@ export default function CourseAssignmentsListScreen() {
   const toggleExpanded = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50 dark:bg-black">
       <ScrollView
-        className="px-4 pt-4"
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text className="text-2xl font-extrabold mb-2">Assignments</Text>
-        <Text className="text-neutral-500 dark:text-neutral-400 mb-3">{id}</Text>
-        <CourseNav courseId={id} active="assignments" />
-
         <View className="gap-3">
           {sorted.map((a) => {
             const date = new Date(a.dueAt);
@@ -135,11 +135,16 @@ export default function CourseAssignmentsListScreen() {
                     <Text className="text-neutral-500 dark:text-neutral-400" numberOfLines={1}>
                       Due {formatDateTime(date)} · {formatRelativeShort(date)}
                     </Text>
+                    { (a as any).groupType && (
+                      <View className="mt-1 px-2 py-0.5 rounded-full self-start" style={{ backgroundColor: (a as any).groupType === 'group' ? '#4F46E5' : '#6B7280' }}>
+                        <Text className="text-[10px] text-white uppercase tracking-wide">{(a as any).groupType === 'group' ? 'Group' : 'Individual'}</Text>
+                      </View>
+                    )}
                     <Pressable onPress={() => toggleExpanded(a.id)} className="mt-1 self-start px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800">
                       <Text className="text-[11px] text-neutral-700 dark:text-neutral-300">{isOpen ? 'Hide Details' : 'See Details'}</Text>
                     </Pressable>
                   </View>
-                  <Pressable onPress={() => router.push((`/(student)/course/${id}/assignments/${a.id}` as any))} className="h-10 w-10 rounded-full bg-orange-500 items-center justify-center">
+                  <Pressable onPress={() => router.push((`/assignment/${a.id}?courseId=${id}` as any))} className="h-10 w-10 rounded-full bg-orange-500 items-center justify-center">
                     <Ionicons name="play" size={18} color="#fff" />
                   </Pressable>
                 </Pressable>
@@ -150,6 +155,9 @@ export default function CourseAssignmentsListScreen() {
                 {/* Units preview */}
                 {isOpen && (
                   <View className="px-4 pt-3 pb-3 gap-3">
+                    {a.description && (
+                      <Text className="text-[12px] text-neutral-600 dark:text-neutral-300 mb-2" numberOfLines={3}>{a.description}</Text>
+                    )}
                     {units.length > 0 ? (
                       units.map((u) => {
                         const up = unitProgress(u);
@@ -159,7 +167,7 @@ export default function CourseAssignmentsListScreen() {
                             <View className="flex-1">
                               <Text className="text-[13px] mb-1" numberOfLines={1}>{u.title}</Text>
                               <View className="h-2 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                                <View style={{ width: `${up}%` }} className={`h-full ${done ? 'bg-[#00AFC8]' : 'bg-orange-500'}`} />
+                                <View style={{ width: `${up}%`, backgroundColor: done ? accent : '#F97316' }} className="h-full" />
                               </View>
                             </View>
                             <Text className="w-12 text-right text-[11px] text-neutral-500 dark:text-neutral-400">{up}%</Text>
@@ -175,7 +183,7 @@ export default function CourseAssignmentsListScreen() {
                     )}
 
                     {/* Add New Unit */}
-                    <Pressable onPress={() => router.push((`/(student)/course/${id}/assignments/${a.id}` as any))} className="mt-1 rounded-xl border border-neutral-300 dark:border-neutral-700 py-2 items-center justify-center">
+                    <Pressable onPress={() => router.push((`/assignment/${a.id}?courseId=${id}` as any))} className="mt-1 rounded-xl border border-neutral-300 dark:border-neutral-700 py-2 items-center justify-center">
                       <Text className="text-orange-600">Add New Unit</Text>
                     </Pressable>
                   </View>
@@ -190,6 +198,5 @@ export default function CourseAssignmentsListScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
   );
 }

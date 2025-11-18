@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "eduplus",
+    "name": "EduPlus",
     "slug": "eduplus",
     "version": "1.0.0",
     "orientation": "portrait",
-  "icon": "./assets/images/EduPlus logo_blue.png",
+    "icon": "./assets/images/EduPlus logo_blue.png",
     "scheme": "eduplus",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/EduPlus_Banner_v3.png",
+      "image": "./assets/images/EduPlus_Banner_background.png",
       "resizeMode": "contain",
       "backgroundColor": "#2B0D52"
     },
@@ -31,7 +31,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
@@ -40,8 +41,10 @@
       "API_BASE_URL": "http://localhost:3000",
       "APPWRITE_ENDPOINT": "https://fra.cloud.appwrite.io/v1",
       "APPWRITE_PROJECT_ID": "68b68760000726b3ae90",
+      "APPWRITE_PROJECT_NAME": "eduplus_app",
       "APPWRITE_DATABASE_ID": "68fad173003640f9d966",
       "APPWRITE_BUCKET_ID": "691032bc00073d40014c",
+      "APPWRITE_AVATAR_BUCKET_ID": "profile_avatars",
       "APPWRITE_PLATFORM": "eduplus.mobile",
       "APPWRITE_COLLECTIONS": {},
       "USE_MOCK": false,

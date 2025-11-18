@@ -8,9 +8,9 @@ export const mockCourses: CourseService = {
   async getCourse(courseId: string) {
     return courses.find((c) => c.id === courseId) ?? null;
   },
-  async createCourse(input: { name: string; code: string }) {
+  async createCourse(input: { name: string; code: string; description?: string | null; color?: string | null }) {
     const id = `c-${Date.now()}`;
-    const newCourse = { id, code: input.code, name: input.name };
+    const newCourse = { id, code: input.code, name: input.name, description: input.description ?? null, color: input.color ?? null } as any;
     (courses as any).push?.(newCourse);
     return newCourse as any;
   },

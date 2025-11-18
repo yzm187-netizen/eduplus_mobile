@@ -6,6 +6,11 @@ export type Course = {
   code: string;
   name: string;
   color?: string;
+  description?: string | null;
+  teacherIds?: string[]; // who can modify this course
+  canEdit?: boolean; // derived from permissions (runtime)
+  createdAt?: string | null; // demo or server timestamp
+  createdBy?: string | null; // userId of creator
   badges?: {
     newNotes?: number;
     newGrades?: number;
@@ -19,6 +24,10 @@ export type AssignmentRef = {
   dueAt: string; // ISO
   description?: string; // long description (teacher-editable in future)
   createdAt?: string; // ISO
+  groupType?: 'individual' | 'group'; // optional indicator for UI badges
+  bannerUrl?: string | null; // optional visual banner
+  sectionsJson?: string | null; // JSON string of structured sections
+  tasksJson?: string | null; // JSON string of tasks/subtasks state
 };
 
 export type Notification =
@@ -33,10 +42,12 @@ export type Notification =
       badges?: number; // numeric badge count when applicable
     };
 
+// Map real sample Appwrite IDs (if mirrored) - Dr. Adrian Tan (teacher) vs Alice Smith (student) distinction.
+// Use placeholders if working offline; replace with real IDs on seed.
 export const courses: Course[] = [
-  { id: 'c-eng201', code: 'ENG 201', name: 'Academic Writing', color: '#10b981', badges: { newNotes: 2 } },
-  { id: 'c-cs305', code: 'CS 305', name: 'Human-Computer Interaction', color: '#6366f1', badges: { newGrades: 1 } },
-  { id: 'c-math220', code: 'MATH 220', name: 'Statistics', color: '#f59e0b' },
+  { id: 'c-eng201', code: 'ENG 201', name: 'Academic Writing', color: '#10b981', badges: { newNotes: 2 }, teacherIds: ['u-teacher-DR_ADRIAN_TAN'] },
+  { id: 'c-cs305', code: 'CS 305', name: 'Human-Computer Interaction', color: '#6366f1', badges: { newGrades: 1 }, teacherIds: ['u-teacher-DR_ADRIAN_TAN'] },
+  { id: 'c-math220', code: 'MATH 220', name: 'Statistics', color: '#f59e0b', teacherIds: ['u-teacher-DR_ADRIAN_TAN'] },
 ];
 
 export const assignments: AssignmentRef[] = [

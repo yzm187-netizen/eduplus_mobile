@@ -14,6 +14,8 @@ export type Lesson = {
   courseId: string;
   title: string;
   order: number;
+  about?: string;
+  coverUrl?: string;
 };
 
 export type Note = {
@@ -25,6 +27,10 @@ export type Note = {
   title: string;
   content: string; // markdown/plain text for now
   createdAt: string; // ISO
+  fileId?: string;
+  attachmentName?: string;
+  attachmentUrl?: string;
+  mimeType?: string;
 };
 
 export type Enrollment = {

@@ -2,6 +2,7 @@ import type { AuthService } from '@/services/contracts';
 import { account } from '@/lib/appwrite';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getOrCreateProfile } from '@/services/live/profile';
+import { displayNameFromEmail } from '@/utils/displayName';
 
 export const liveAuth: AuthService = {
   async signIn(email: string, password: string) {
@@ -19,8 +20,20 @@ export const liveAuth: AuthService = {
     }
 
     const me = await account.get();
-    const profile = await getOrCreateProfile({ $id: me.$id, name: me.name || (me.email?.split('@')[0] ?? 'User'), email: me.email || email });
-    const user = { id: profile.id, name: profile.name, email: profile.email, role: profile.role } as const;
+    let profile;
+    try {
+      const inferredName = me.name || displayNameFromEmail(me.email || email) || 'Student';
+      profile = await getOrCreateProfile({ $id: me.$id, name: inferredName, email: me.email || email });
+    } catch (e: any) {
+      const msg = String(e?.message || e);
+      if (/already exists|409/i.test(msg)) {
+        const inferredName = me.name || displayNameFromEmail(me.email || email) || 'Student';
+        profile = { id: me.$id, name: inferredName, email: me.email || email, role: 'student' } as any;
+      } else {
+        throw e;
+      }
+    }
+    const user = { id: profile.id, name: profile.name, email: profile.email, role: (profile as any).role || 'student' } as const;
     useAuthStore.getState().setUser(user);
     return user;
   },
@@ -31,8 +44,20 @@ export const liveAuth: AuthService = {
   async getSession() {
     try {
       const me = await account.get();
-      const profile = await getOrCreateProfile({ $id: me.$id, name: me.name || (me.email?.split('@')[0] ?? 'User'), email: me.email ?? '' });
-      const user = { id: profile.id, name: profile.name, email: profile.email, role: profile.role } as const;
+      let profile;
+      try {
+        const inferredName = me.name || displayNameFromEmail(me.email) || 'Student';
+        profile = await getOrCreateProfile({ $id: me.$id, name: inferredName, email: me.email ?? '' });
+      } catch (e: any) {
+        const msg = String(e?.message || e);
+        if (/already exists|409/i.test(msg)) {
+          const inferredName = me.name || displayNameFromEmail(me.email) || 'Student';
+          profile = { id: me.$id, name: inferredName, email: me.email ?? '', role: 'student' } as any;
+        } else {
+          throw e;
+        }
+      }
+      const user = { id: profile.id, name: profile.name, email: profile.email, role: (profile as any).role || 'student' } as const;
       useAuthStore.getState().setUser(user);
       return user;
     } catch {

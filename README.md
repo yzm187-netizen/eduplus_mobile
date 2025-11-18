@@ -2,6 +2,33 @@
 
 EduPlus mobile app built with Expo Router (tabs), NativeWind, React Query, and Zustand.
 
+> Project Root Note: The actual application root is this `eduplus/` directory. Any duplicate `package.json`, `node_modules`, or README that lived one level above has been removed to simplify tooling. Run all npm / expo commands from here.
+
+## Combined Quick Start (Reference)
+
+1. Install dependencies:
+	```bash
+	npm install
+	```
+2. Run (mock mode by default):
+	```bash
+	npx expo start
+	```
+3. Switch to live backend (after Appwrite setup) by setting in `.env`:
+	```
+	EXPO_PUBLIC_API_MODE=live
+	```
+4. Optional: Chat live override
+	```
+	EXPO_PUBLIC_CHAT_MODE=live
+	```
+5. Re-run with cache clear if issues:
+	```bash
+	npx expo start -c
+	```
+
+Data schema & permissions references now consolidated under `docs/eduplus/` (multiple schema/structure docs retained).
+
 ## Configuration
 
 - API base URL

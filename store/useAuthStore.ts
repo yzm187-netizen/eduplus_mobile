@@ -7,6 +7,7 @@ export type User = {
   name: string;
   email: string;
   avatarUrl?: string;
+  avatarFileId?: string;
   role: 'student' | 'teacher' | 'admin';
 };
 

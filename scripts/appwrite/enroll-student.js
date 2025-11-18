@@ -6,9 +6,25 @@
 
 const { Client, Databases, ID, Query } = require('node-appwrite');
 
-const { APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY, APPWRITE_DATABASE_ID } = process.env;
-if (!APPWRITE_ENDPOINT || !APPWRITE_PROJECT || !APPWRITE_API_KEY || !APPWRITE_DATABASE_ID) {
-  console.error('Missing env: APPWRITE_ENDPOINT, APPWRITE_PROJECT, APPWRITE_API_KEY, APPWRITE_DATABASE_ID');
+const {
+  APPWRITE_ENDPOINT,
+  APPWRITE_PROJECT,
+  APPWRITE_PROJECT_ID,
+  EXPO_PUBLIC_APPWRITE_PROJECT_ID,
+  EXPO_PUBLIC_APPWRITE_ENDPOINT,
+  EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+  APPWRITE_DATABASE_ID,
+  APPWRITE_API_KEY,
+  EXPO_PUBLIC_APPWRITE_API_KEY,
+} = process.env;
+
+const endpoint = APPWRITE_ENDPOINT || EXPO_PUBLIC_APPWRITE_ENDPOINT;
+const project = APPWRITE_PROJECT || APPWRITE_PROJECT_ID || EXPO_PUBLIC_APPWRITE_PROJECT_ID;
+const apiKey = APPWRITE_API_KEY || EXPO_PUBLIC_APPWRITE_API_KEY;
+const databaseId = APPWRITE_DATABASE_ID || EXPO_PUBLIC_APPWRITE_DATABASE_ID;
+
+if (!endpoint || !project || !apiKey || !databaseId) {
+  console.error('Missing env: endpoint/project/apiKey/databaseId (check APPWRITE_* or EXPO_PUBLIC_* vars)');
   process.exit(1);
 }
 
@@ -28,10 +44,10 @@ if ((!studentEmail && !userIdArg) || (!courseCode && !courseIdArg)) {
   process.exit(1);
 }
 
-const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT).setKey(APPWRITE_API_KEY);
+const client = new Client().setEndpoint(endpoint).setProject(project).setKey(apiKey);
 const db = new Databases(client);
 
-const DB_ID = APPWRITE_DATABASE_ID;
+const DB_ID = databaseId;
 const COL_PROFILES = 'profiles';
 const COL_COURSES = 'courses';
 const COL_ENROLLMENTS = 'enrollments';

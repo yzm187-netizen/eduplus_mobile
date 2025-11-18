@@ -12,11 +12,10 @@ export default function TeacherTabsLayout() {
     <>
       <View style={{ position:'absolute', left:-60, top:100, width:220, height:220, borderRadius:110, backgroundColor:'rgba(0,175,200,0.18)' }} />
       <Tabs>
-      <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color }) => <TabBarIcon name="line-chart" color={color} /> }} />
-      <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: ({ color }) => <TabBarIcon name="calendar" color={color} /> }} />
-      <Tabs.Screen name="scanner" options={{ title: 'Scanner', tabBarIcon: ({ color }) => <TabBarIcon name="qrcode" color={color} /> }} />
-      <Tabs.Screen name="inbox" options={{ title: 'Inbox', tabBarIcon: ({ color }) => <TabBarIcon name="envelope" color={color} /> }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} /> }} />
+        <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color }) => <TabBarIcon name="line-chart" color={color} /> }} />
+        <Tabs.Screen name="my-courses" options={{ title: 'Courses', tabBarIcon: ({ color }) => <TabBarIcon name="book" color={color} /> }} />
+        <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: ({ color }) => <TabBarIcon name="calendar" color={color} /> }} />
+        <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} /> }} />
       </Tabs>
     </>
   );

@@ -1,27 +1,31 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { normalizeCourseColor } from '@/utils/courseColor';
 
 export interface BannerHeaderProps {
-  height?: number; // pixel height of banner area
-  children?: React.ReactNode; // overlay content (texts, metrics, etc.)
-  paddingHorizontal?: number; // horizontal inset for overlay
-  paddingVertical?: number; // vertical inset for overlay
-  rounded?: boolean; // apply rounded bottom corners
-  childrenPosition?: 'top' | 'bottom'; // where to anchor overlay children
-  horizontalInset?: number; // inset banner from screen edges to allow side overlap with following content
-  textShift?: number; // horizontal shift (px) for the text image to expose teal accent areas
-  backgroundScale?: number; // scale background image to zoom out (<1) or in (>1)
-  backgroundShiftX?: number; // shift background image horizontally (px)
-  backgroundShiftY?: number; // shift background image vertically (px)
-  backgroundAnchorX?: 'left' | 'center' | 'right'; // anchor horizontal focus when scaling
-  backgroundAnchorY?: 'top' | 'center' | 'bottom'; // anchor vertical focus when scaling
-  backgroundMode?: 'cover' | 'contain'; // control resize mode; contain prevents stretching
-  showText?: boolean; // toggle foreground text/logo layer
-  floating?: boolean; // if true, do not absolutely position; let parent flow so it can scroll
+  height?: number;
+  children?: React.ReactNode;
+  paddingHorizontal?: number;
+  paddingVertical?: number;
+  rounded?: boolean;
+  childrenPosition?: 'top' | 'bottom';
+  absoluteChildren?: boolean; // when false, children render in normal flow with padding
+  horizontalInset?: number;
+  textShift?: number;
+  backgroundScale?: number;
+  backgroundShiftX?: number;
+  backgroundShiftY?: number;
+  backgroundAnchorX?: 'left' | 'center' | 'right';
+  backgroundAnchorY?: 'top' | 'center' | 'bottom';
+  backgroundMode?: 'cover' | 'contain';
+  showText?: boolean;
+  floating?: boolean;
+  colorName?: 'red' | 'green' | 'purple' | 'blue'; // choose among provided variants
+  allowTouchesThrough?: boolean; // when true, header won't intercept touches
+  style?: any; // allow external style overrides (e.g., absolute layering)
 }
 
-// Generic banner header that layers background and text assets with optional children overlay
 export const BannerHeader: React.FC<BannerHeaderProps> = ({
   height = 208,
   children,
@@ -29,6 +33,7 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
   paddingVertical = 16,
   rounded = true,
   childrenPosition = 'bottom',
+  absoluteChildren = true,
   horizontalInset = 0,
   textShift = 0,
   backgroundScale = 1,
@@ -39,10 +44,28 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
   backgroundMode = 'contain',
   showText = true,
   floating = false,
+  colorName = 'blue',
+  allowTouchesThrough = false,
+  style,
 }) => {
+  const normalized = normalizeCourseColor(colorName);
+  const fallbackBg = (
+    normalized === 'red' ? '#7f1d1d' :
+    normalized === 'green' ? '#065f46' :
+    normalized === 'purple' ? '#4c1d95' :
+    '#0f172a'
+  );
+  const [bgLoaded, setBgLoaded] = useState(false);
   let bg: any = null;
   let textImg: any = null;
-  try { bg = require('../assets/images/EduPlus_Banner_background.png'); } catch {}
+  try {
+    bg = (
+  normalized === 'red' ? require('../assets/images/EduPlus_Banner_background_red.png') :
+  normalized === 'green' ? require('../assets/images/EduPlus_Banner_background_green.png') :
+  normalized === 'purple' ? require('../assets/images/EduPlus_Banner_background_purple.png') :
+      require('../assets/images/EduPlus_Banner_background.png') // blue/original
+    );
+  } catch {}
   try { textImg = require('../assets/images/EduPlus_Banner_text.png'); } catch {}
 
   const [layout, setLayout] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
@@ -55,16 +78,13 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
       const extraH = (backgroundScale - 1) * layout.height;
       if (backgroundAnchorX === 'left') tx += -extraW / 2;
       else if (backgroundAnchorX === 'right') tx += extraW / 2;
-      // center => no change
       if (backgroundAnchorY === 'top') ty += -extraH / 2;
       else if (backgroundAnchorY === 'bottom') ty += extraH / 2;
-      // center => no change
     }
     return { tx, ty };
   };
   const { tx, ty } = translateFromAnchor();
 
-  // Derive centering/anchoring for the background image inside the container
   const contentPosition = (
     backgroundAnchorY === 'top' && backgroundAnchorX === 'left' ? 'top-left' :
     backgroundAnchorY === 'top' && backgroundAnchorX === 'right' ? 'top-right' :
@@ -76,6 +96,17 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
     backgroundAnchorX === 'right' ? 'right' :
     'center'
   ) as any;
+
+  const baseBgStyle = [
+    StyleSheet.absoluteFillObject,
+    (backgroundScale !== 1 || backgroundShiftX || backgroundShiftY)
+      ? { transform: [
+          ...(tx ? [{ translateX: tx }] : []),
+          ...(ty ? [{ translateY: ty }] : []),
+          ...(backgroundScale !== 1 ? [{ scale: backgroundScale }] : []),
+        ] }
+      : null,
+  ];
 
   return (
     <View
@@ -89,30 +120,36 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
           borderBottomLeftRadius: rounded ? 24 : 0,
           borderBottomRightRadius: rounded ? 24 : 0,
           top: floating ? undefined : 0,
+          // Always keep a solid background to prevent white flash during layout changes
+          backgroundColor: fallbackBg,
         },
+        style,
       ]}
+      pointerEvents={allowTouchesThrough ? 'none' : undefined}
       onLayout={(e) => {
         const { width, height: h } = e.nativeEvent.layout;
         if (width && h && (width !== layout.width || h !== layout.height)) setLayout({ width, height: h });
       }}
     >
+      {/* Fallback solid color until image loads (reduces white flash) */}
+      {!bgLoaded && (
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: fallbackBg }]} />
+      )}
       {bg && (
         <ExpoImage
           source={bg}
           contentFit={backgroundMode}
           contentPosition={contentPosition}
-          style={[
-            StyleSheet.absoluteFillObject,
-            (backgroundScale !== 1 || backgroundShiftX || backgroundShiftY)
-              ? { transform: [
-                  ...(tx ? [{ translateX: tx }] : []),
-                  ...(ty ? [{ translateY: ty }] : []),
-                  ...(backgroundScale !== 1 ? [{ scale: backgroundScale }] : []),
-                ] }
-              : null,
-          ]}
+          style={baseBgStyle as any}
+          cachePolicy="memory-disk"
+          priority="high"
+          // Avoid toggling bgLoaded back to false on re-layout; this reduces flashing
+          onLoadEnd={() => setBgLoaded(true)}
         />
       )}
+
+      {/* Removed dynamic overlays; using baked-in variant images */}
+
       {showText && textImg && (
         <ExpoImage
           source={textImg}
@@ -125,19 +162,26 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
           ]}
         />
       )}
+
       {children ? (
-        <View
-          style={{
-            position: 'absolute',
-            left: paddingHorizontal,
-            right: paddingHorizontal,
-            ...(childrenPosition === 'bottom'
-              ? { bottom: paddingVertical }
-              : { top: paddingVertical }),
-          }}
-        >
-          {children}
-        </View>
+        absoluteChildren ? (
+          <View
+            style={{
+              position: 'absolute',
+              left: paddingHorizontal,
+              right: paddingHorizontal,
+              ...(childrenPosition === 'bottom'
+                ? { bottom: paddingVertical }
+                : { top: paddingVertical }),
+            }}
+          >
+            {children}
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal, paddingVertical }}>
+            {children}
+          </View>
+        )
       ) : null}
     </View>
   );
@@ -145,10 +189,7 @@ export const BannerHeader: React.FC<BannerHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
+    // Position is applied dynamically based on `floating` prop to avoid unintended gaps
     overflow: 'hidden',
     backgroundColor: 'transparent',
     width: '100%',

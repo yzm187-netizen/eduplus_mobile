@@ -12,15 +12,26 @@ export interface AuthService {
 export interface CourseService {
   listMyCourses(): Promise<Course[]>;
   getCourse(courseId: string): Promise<Course | null>;
-  createCourse(input: { name: string; code: string }): Promise<Course>;
-  updateCourse(courseId: string, patch: Partial<Pick<Course, 'name' | 'code'>> & { gradingRule?: string }): Promise<void>;
+  createCourse(input: { name: string; code: string; description?: string | null; color?: string | null }): Promise<Course>;
+  updateCourse(
+    courseId: string,
+    patch: Partial<Pick<Course, 'name' | 'code' | 'description' | 'color'>> & { gradingRule?: string }
+  ): Promise<void>;
+  deleteCourse?(courseId: string): Promise<void>;
 }
 
 export interface AssignmentService {
   listAll(): Promise<AssignmentRef[]>;
   listByCourse(courseId: string): Promise<AssignmentRef[]>;
   getDetail(courseId: string, assignmentId: string): Promise<AssignmentRef | null>;
-  create(courseId: string, input: { title: string; type: string; dueAt?: string }): Promise<AssignmentRef>;
+  create(courseId: string, input: { title: string; type: string; dueAt?: string; description?: string; groupType?: 'individual' | 'group' }): Promise<AssignmentRef>;
+  update?(assignmentId: string, patch: { title?: string; description?: string; bannerUrl?: string | null; sectionsJson?: string; tasksJson?: string; dueAt?: string }): Promise<void>;
+  // Assignment groups and group progress (live only)
+  listGroups?(assignmentId: string): Promise<Array<{ id: string; name: string; memberIds: string[] }>>;
+  createGroup?(assignmentId: string, input: { name: string; memberIds: string[] }): Promise<{ id: string; name: string; memberIds: string[] }>;
+  deleteGroup?(assignmentId: string, groupId: string): Promise<void>;
+  getOrCreateProgress?(assignmentId: string, groupId: string): Promise<{ id: string; assignmentId: string; groupId: string; progress: Record<string, boolean>; sectionsAttachments?: Record<string, Array<{ uri: string; name?: string; mimeType?: string; size?: number; fileId?: string }>>; tasksOverlay?: Record<string, any[]> }>;
+  updateProgress?(progressId: string, patch: { progress?: Record<string, boolean>; sectionsAttachments?: Record<string, Array<{ uri: string; name?: string; mimeType?: string; size?: number; fileId?: string }>>; tasksOverlay?: Record<string, any[]> }): Promise<void>;
 }
 
 export interface NotificationService {
@@ -58,6 +69,23 @@ export interface ContentService {
   getRubric(assignmentId: string): Promise<Rubric | null>;
   listPeople(): Promise<Person[]>; // convenience for future use
   getDeck(lessonId: string): Promise<any | null>; // slide deck JSON
+  // Optional write capabilities for live mode
+  createLesson?(courseId: string, input: { title: string; about?: string }): Promise<Lesson>; // new lesson basic creation
+  deleteLesson?(lessonId: string): Promise<void>; // remove lesson
+  createNoteWithAttachment?(
+    courseId: string,
+    lessonId: string,
+    file: { uri: string; name?: string; type?: string }
+  ): Promise<Note>;
+  deleteNote?(noteId: string): Promise<void>;
+  updateLesson?(lessonId: string, patch: { title?: string; about?: string; coverUrl?: string; completed?: boolean }): Promise<void>;
+  // Allow position updates for ordering
+  updateLessonPosition?(lessonId: string, position: number): Promise<void>;
+  uploadLessonImage?(
+    lessonId: string,
+    file: { uri: string; name?: string; type?: string }
+  ): Promise<string>; // returns coverUrl
+  deleteLessonImage?(lessonId: string): Promise<void>;
 }
 
 export interface ScheduleService {

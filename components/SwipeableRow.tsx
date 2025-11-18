@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { Animated, View } from 'react-native';
-import Swipeable from 'react-native-swipeable';
+import { View } from 'react-native';
+import { Swipeable as GhSwipeable } from 'react-native-gesture-handler';
 
 export type SwipeableRowHandle = {
   recenter: () => void;
@@ -15,12 +15,13 @@ export type SwipeableRowProps = {
   rightButtonWidth?: number; // width for each right button
   rightActionActivationDistance?: number; // min distance to open actions
   // Expose pan animated value for upstream effects (e.g., fading icons)
-  onPanAnimatedValueRef?: (val: Animated.ValueXY) => void;
+  onPanAnimatedValueRef?: (val: any) => void;
   onSwipeStart?: () => void;
   onSwipeRelease?: () => void;
   onRightButtonsOpenRelease?: () => void;
   onRightButtonsCloseRelease?: () => void;
   containerStyle?: any;
+  useNativeDriver?: boolean;
 };
 
 const SwipeableRow = forwardRef<SwipeableRowHandle, SwipeableRowProps>(
@@ -39,37 +40,56 @@ const SwipeableRow = forwardRef<SwipeableRowHandle, SwipeableRowProps>(
       onRightButtonsOpenRelease,
       onRightButtonsCloseRelease,
       containerStyle,
+      useNativeDriver = true,
     },
     ref
   ) => {
-    const swipeRef = useRef<any>(null);
+    const swipeRef = useRef<GhSwipeable | null>(null);
 
     useImperativeHandle(ref, () => ({
       recenter: () => {
         try {
-          swipeRef.current?.recenter?.();
+          swipeRef.current?.close?.();
         } catch {}
       },
     }));
 
     return (
-      <View style={[{ overflow: 'hidden' }, containerStyle]}>
-        <Swipeable
-          onRef={(r: any) => (swipeRef.current = r)}
-          leftButtons={leftButtons}
-          leftButtonWidth={leftButtonWidth}
-          leftActionActivationDistance={leftActionActivationDistance}
-          rightButtons={rightButtons}
-          rightButtonWidth={rightButtonWidth}
-          rightActionActivationDistance={rightActionActivationDistance}
-          onSwipeStart={onSwipeStart}
-          onSwipeRelease={onSwipeRelease}
-          onRightButtonsOpenRelease={onRightButtonsOpenRelease}
-          onRightButtonsCloseRelease={onRightButtonsCloseRelease}
-          onPanAnimatedValueRef={(v: Animated.ValueXY) => onPanAnimatedValueRef && onPanAnimatedValueRef(v)}
+      <View style={[{ overflow: 'hidden', width: '100%', alignSelf: 'stretch' }, containerStyle]}>
+        <GhSwipeable
+          ref={(r) => { swipeRef.current = r; }}
+          friction={2}
+          leftThreshold={leftActionActivationDistance}
+          rightThreshold={rightActionActivationDistance}
+          containerStyle={{ width: '100%' }}
+          childrenContainerStyle={{ flex: 1, width: '100%', alignSelf: 'stretch' }}
+          renderLeftActions={leftButtons && leftButtons.length ? () => (
+            <View style={{ flexDirection: 'row', height: '100%' }}>
+              {leftButtons.map((btn, i) => (
+                <View key={i} style={{ width: leftButtonWidth, height: '100%', justifyContent: 'center' }}>
+                  {btn}
+                </View>
+              ))}
+            </View>
+          ) : undefined}
+          renderRightActions={rightButtons && rightButtons.length ? () => (
+            <View style={{ flexDirection: 'row', height: '100%' }}>
+              {rightButtons.map((btn, i) => (
+                <View key={i} style={{ width: rightButtonWidth, height: '100%', justifyContent: 'center' }}>
+                  {btn}
+                </View>
+              ))}
+            </View>
+          ) : undefined}
+          onSwipeableWillOpen={() => { onSwipeStart?.(); }}
+          onSwipeableOpen={(direction) => { if (direction === 'right') onRightButtonsOpenRelease?.(); }}
+          onSwipeableWillClose={() => { onSwipeRelease?.(); }}
+          onSwipeableClose={() => { onRightButtonsCloseRelease?.(); }}
         >
-          {children}
-        </Swipeable>
+          <View style={{ flex: 1, width: '100%' }}>
+            {children}
+          </View>
+        </GhSwipeable>
       </View>
     );
   }

@@ -18,9 +18,6 @@ export default function TeacherAssessmentsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-neutral-50 dark:bg-black p-4">
       <Text className="text-2xl font-extrabold mb-4">Assessments</Text>
-      <Link href={{ pathname: '/(teacher)/course/[courseId]/assessment/create', params: { courseId: id } } as any} asChild>
-        <Button title="Create" variant="secondary" />
-      </Link>
       <View className="rounded-2xl mt-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
         {assessments.map(a => (
           <Link key={a.id} href={{ pathname: '/(teacher)/course/[courseId]/assessment/[assessmentId]', params: { courseId: id, assessmentId: a.id } } as any} asChild>

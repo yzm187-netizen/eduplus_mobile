@@ -11,12 +11,26 @@ const COL_COURSES = 'courses';
 const COL_ENROLLMENTS = 'enrollments';
 
 function mapCourse(doc: any): Course {
+  const user = useAuthStore.getState().user;
+  const perms: string[] = Array.isArray(doc.$permissions) ? doc.$permissions : [];
+  const teacherIds = Array.isArray(doc.teacherIds) ? doc.teacherIds : [];
+  // Accept multiple string styles for permissions (single or double quotes)
+  const updateUserA = !!user && perms.includes(`update("user:${user.id}")`);
+  const updateUserB = !!user && perms.includes(`update('user:${user.id}')`);
+  // Optional: team-based update permissions (can't verify membership client-side, but Appwrite will enforce on save)
+  const updateAnyTeam = perms.some(p => p.startsWith('update("team:') || p.startsWith("update('team:"));
+  const canEdit = !!user && (updateUserA || updateUserB || teacherIds.includes(user.id) || updateAnyTeam);
   return {
     id: doc.$id,
     code: doc.code,
     name: doc.name,
     color: doc.color,
-  };
+    description: doc.description || null,
+    teacherIds,
+    canEdit,
+    createdAt: doc.createdAt || doc.$createdAt || null,
+    createdBy: doc.createdBy || (teacherIds.length ? teacherIds[0] : null),
+  } as Course;
 }
 
 export const liveCourses: CourseService = {
@@ -69,7 +83,7 @@ export const liveCourses: CourseService = {
     }
   },
 
-  async createCourse(input: { name: string; code: string }) {
+  async createCourse(input: { name: string; code: string; description?: string | null; color?: string | null }) {
     const user = useAuthStore.getState().user;
     if (!user) throw new Error('Not signed in');
     const doc = await databases.createDocument(
@@ -79,9 +93,10 @@ export const liveCourses: CourseService = {
       {
         name: input.name,
         code: input.code,
-        color: null,
+        color: input.color || null,
+        description: input.description || null,
         teacherIds: [user.id],
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(), // demo-level creation timestamp (editable)
       },
       [
         // Allow any authenticated user to read (needed for enrolled students listing courses)
@@ -94,11 +109,17 @@ export const liveCourses: CourseService = {
     return mapCourse(doc);
   },
 
-  async updateCourse(courseId: string, patch: { name?: string; code?: string; gradingRule?: string }) {
+  async updateCourse(courseId: string, patch: { name?: string; code?: string; description?: string | null; color?: string | null; gradingRule?: string }) {
     const payload: any = {};
     if (patch.name !== undefined) payload.name = patch.name;
     if (patch.code !== undefined) payload.code = patch.code;
+    if (patch.description !== undefined) payload.description = patch.description;
+    if (patch.color !== undefined) payload.color = patch.color;
     if (patch.gradingRule !== undefined) payload.gradingRule = patch.gradingRule;
     await databases.updateDocument(DB_ID, COL_COURSES, courseId, payload);
+  },
+
+  async deleteCourse(courseId: string) {
+    await databases.deleteDocument(DB_ID, COL_COURSES, courseId);
   },
 };

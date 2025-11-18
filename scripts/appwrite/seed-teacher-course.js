@@ -34,43 +34,66 @@ const COL_COURSES = 'courses';
 const COL_ENROLLMENTS = 'enrollments';
 const COL_LESSONS = 'lessons';
 
+// Ensure we are using a server-side API key (not a client key lacking users.write)
+if (!/^standard_/.test(apiKey || '') && !/^secret_/.test(apiKey || '')) {
+  console.warn('[seed] WARNING: API key does not look like a server key.');
+}
 const client = new Client().setEndpoint(endpoint).setProject(project).setKey(apiKey);
 const users = new Users(client);
 const db = new Databases(client);
 
 async function ensureUser({ email, password, name }) {
-  // Try create via multiple APIs for compatibility across Appwrite versions
+  // Prefer modern object-style create with plain password; fallback to legacy signature if needed
   const userId = ID.unique();
-  try {
-    if (typeof users.createArgon2User === 'function') {
-      return await users.createArgon2User(userId, email, password, name);
+  if (typeof users.create === 'function') {
+    try {
+      // Object style (preferred in SDK v20+)
+      return await users.create({ userId, email, password, name });
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (/missing scopes/i.test(msg)) {
+        throw new Error('API key lacks users.write scope. Use a server API key from Appwrite Console (Project > API Keys) with Users access.');
+      }
+      // Legacy signature fallback if object style is not supported
+      try {
+        return await users.create(userId, email, undefined, password, name);
+      } catch (e2) {
+        // If the user already exists, return it; otherwise rethrow original error for visibility
+        const existing = await findUserByEmail(email);
+        if (existing) return existing;
+        throw e2;
+      }
     }
-  } catch (e) {
-    // fallthrough
   }
-  try {
-    if (typeof users.createEmailUser === 'function') {
-      return await users.createEmailUser(userId, email, password, name);
+  // Additional hashing methods if plain create is unavailable (unlikely on modern SDKs)
+  if (typeof users.createArgon2User === 'function') {
+    try {
+      return await users.createArgon2User({ userId, email, password, name });
+    } catch (e) {
+      const existing = await findUserByEmail(email);
+      if (existing) return existing;
+      throw e;
     }
-  } catch (e) {
-    // fallthrough
   }
-  try {
-    // Legacy signature: create(userId, email, phone, password, name)
-    if (typeof users.create === 'function') {
-      return await users.create(userId, email, undefined, password, name);
-    }
-  } catch (e) {
-    // fallthrough
-  }
-  throw new Error('No compatible Users.create* method found in node-appwrite');
+  throw new Error('No compatible Users.create method available in node-appwrite SDK');
 }
 
 async function findUserByEmail(email) {
   try {
-    const res = await users.list(undefined, undefined, undefined, undefined, undefined, undefined, undefined, email);
-    if (res.total && res.users && res.users.length) return res.users[0];
-  } catch {}
+    // SDK v20: list({ search })
+    const res = await users.list({ search: email });
+    if (res.total && res.users && res.users.length) {
+      return res.users.find((u) => u.email === email) || res.users[0];
+    }
+  } catch (e) {
+    // Fallback: older signature list(queries?, search?)
+    try {
+      const res2 = await users.list([], email);
+      if (res2.total && res2.users && res2.users.length) {
+        return res2.users.find((u) => u.email === email) || res2.users[0];
+      }
+    } catch {}
+  }
   return null;
 }
 
@@ -92,13 +115,14 @@ async function upsertProfile({ id, name, email, role }) {
   }
 }
 
-async function ensureCourse({ code, name, teacherId, color }) {
+async function ensureCourse({ code, name, teacherId, color, description }) {
   const { Query } = require('node-appwrite');
   // Try create
   try {
     const doc = await db.createDocument(DB_ID, COL_COURSES, ID.unique(), {
       code,
       name,
+      description: description || null,
       color: color || null,
       gradingRule: 'standard',
       teacherIds: [teacherId],
@@ -110,7 +134,27 @@ async function ensureCourse({ code, name, teacherId, color }) {
     if (!/already exists|409/.test(msg)) throw e;
     const existing = await db.listDocuments(DB_ID, COL_COURSES, [Query.equal('code', [code])]);
     if (!existing.total) throw new Error('Failed to find existing course by code after conflict');
-    return existing.documents[0];
+    const existingDoc = existing.documents[0];
+    // Update description/color if newly provided and differs
+    try {
+      const patch = {};
+      if (description && existingDoc.description !== description) patch.description = description;
+      // Normalize any prior hex colors to one of the 4 names, or update if different from requested
+      const normalize = (val) => {
+        if (!val) return null;
+        const v = String(val).toLowerCase();
+        if (v.includes('red') || v.includes('ef4444')) return 'red';
+        if (v.includes('green') || v.includes('22c55e') || v.includes('10b981')) return 'green';
+        if (v.includes('purple') || v.includes('a855f7') || v.includes('8b5cf6')) return 'purple';
+        if (v.includes('blue') || v.includes('3b82f6') || v.includes('2563eb')) return 'blue';
+        return 'blue';
+      };
+      const desired = normalize(color);
+      const current = normalize(existingDoc.color);
+      if (desired && current !== desired) patch.color = desired;
+      if (Object.keys(patch).length) await db.updateDocument(DB_ID, COL_COURSES, existingDoc.$id, patch);
+    } catch {}
+    return existingDoc;
   }
 }
 
@@ -186,20 +230,24 @@ async function main() {
 
   // Courses list
   const coursesInput = [
-    { code: 'MATH101', name: 'Calculus I', color: '#2B0D52' },
-    { code: 'PHYS101', name: 'Physics I', color: '#0D3B52' },
-    { code: 'CHEM101', name: 'General Chemistry', color: '#523B0D' },
-    { code: 'ENG101', name: 'English Composition', color: '#0D5240' },
+    { code: 'MATH101', name: 'Calculus I', color: 'red', description: 'Differential and integral calculus focusing on limits, derivatives, integrals, and applications to real-world rate and accumulation problems.' },
+    { code: 'PHYS101', name: 'Physics I', color: 'purple', description: 'Foundations of mechanics: motion, forces, energy, momentum, and rotational dynamics with laboratory reinforcement.' },
+    { code: 'CHEM101', name: 'General Chemistry', color: 'green', description: 'Atomic structure, bonding, stoichiometry, thermochemistry, and introductory kinetics to build chemical intuition.' },
+    { code: 'ENG101', name: 'English Composition', color: 'blue', description: 'Academic writing fundamentals: argument structure, evidence synthesis, clarity, revision, and citation practice.' },
   ];
   const courseDocs = [];
   for (const c of coursesInput) {
-    const doc = await ensureCourse({ code: c.code, name: c.name, color: c.color, teacherId: teacherUser.$id });
+    const doc = await ensureCourse({ code: c.code, name: c.name, color: c.color, description: c.description, teacherId: teacherUser.$id });
     courseDocs.push(doc);
   }
 
-  // Enrollments (teacher + all students for every course)
+  // Enrollments
+  // Teacher only teaches a subset to reflect realistic assignment
+  const teacherCourseCodes = ['MATH101', 'ENG101'];
   for (const course of courseDocs) {
-    await ensureEnrollment(course.$id, teacherUser.$id, 'teacher');
+    if (teacherCourseCodes.includes(course.code)) {
+      await ensureEnrollment(course.$id, teacherUser.$id, 'teacher');
+    }
     for (const stu of studentUsers) {
       await ensureEnrollment(course.$id, stu.$id, 'student');
     }

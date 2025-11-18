@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, Pressable, TextInput, GestureResponderEvent, Animated, TouchableOpacity } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import SwipeableRow, { type SwipeableRowHandle } from './SwipeableRow';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useChecklistUIStore, type UIState } from '@/store/checklists';
@@ -15,6 +16,9 @@ type Props = {
   onReply?: (taskId: string, title: string) => void;
   onRowLayout?: (taskId: string, y: number) => void;
   onStartEdit?: (taskId: string) => void;
+  readOnly?: boolean; // when true, disable edits/toggles/add/delete
+  currentUserId?: string; // used to attribute completion
+  roster?: Array<{ id: string; name: string; avatarUrl?: string }>; // for avatar resolution
 };
 
 function toggleDone(nodes: TaskNode[], id: string): TaskNode[] {
@@ -40,7 +44,7 @@ export type NestedChecklistHandle = {
   closeOpenRow: () => void;
 };
 
-function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTaskId, onReply, onRowLayout, onStartEdit }: Props, ref: React.Ref<NestedChecklistHandle>) {
+function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTaskId, onReply, onRowLayout, onStartEdit, readOnly = false, currentUserId, roster }: Props, ref: React.Ref<NestedChecklistHandle>) {
   const expandedMap = useChecklistUIStore((s: UIState) => s.expanded);
   const toggleExpanded = useChecklistUIStore((s: UIState) => s.toggle);
   const setExpanded = useChecklistUIStore((s: UIState) => s.setExpanded);
@@ -103,6 +107,7 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
   }, []);
 
   const confirmAdd = useCallback((parentId: string) => {
+    if (readOnly) return;
     setAddingMap((prev) => {
       const draft = (prev[parentId] ?? '').trim();
       const { [parentId]: _omit, ...rest } = prev;
@@ -113,7 +118,7 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
       else onChange(addChild(nodes, parentId, newNode));
       return rest;
     });
-  }, [nodes, onChange]);
+  }, [nodes, onChange, readOnly]);
 
   const updateTitle = useCallback((nodesIn: TaskNode[], id: string, title: string): TaskNode[] => {
     return nodesIn.map((n) => {
@@ -136,13 +141,13 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
       arr.map((n) => {
         if (n.id === id) {
           if (n.children && n.children.length) return n; // do not set parent directly
-          return { ...n, done };
+          return { ...n, done, completedBy: done ? currentUserId || (n as any).completedBy || undefined : undefined } as any;
         }
         if (n.children && n.children.length) return { ...n, children: walk(n.children) };
         return n;
       });
     return walk(nodesIn);
-  }, []);
+  }, [currentUserId]);
 
   // Progress across leaf subtasks
   const childProgress = useCallback((n: TaskNode): number | null => {
@@ -248,13 +253,25 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
                   </Pressable>
                 </View>
               ) : (
-                <Text
-                  className={`flex-1 ${node.done ? 'text-neutral-400 line-through' : 'text-neutral-800 dark:text-neutral-100'}`}
-                  style={highlightTaskId === node.id ? { backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 8, paddingHorizontal: 4, paddingVertical: 2 } : undefined}
-                  numberOfLines={2}
-                >
-                  {node.title}
-                </Text>
+                <View className="flex-row items-center flex-1">
+                  <Text
+                    className={`flex-1 ${node.done ? 'text-neutral-400 line-through' : 'text-neutral-800 dark:text-neutral-100'}`}
+                    style={highlightTaskId === node.id ? { backgroundColor: 'rgba(59,130,246,0.15)', borderRadius: 8, paddingHorizontal: 4, paddingVertical: 2 } : undefined}
+                    numberOfLines={2}
+                  >
+                    {node.title}
+                  </Text>
+                  {node.done && (node as any).completedBy && roster && roster.length > 0 && (() => {
+                    const u = roster.find(r => r.id === (node as any).completedBy);
+                    if (!u) return null;
+                    const uri = u.avatarUrl;
+                    return (
+                      <View className="ml-1 h-5 w-5 rounded-full overflow-hidden bg-neutral-200 dark:bg-neutral-700">
+                        {uri ? <ExpoImage source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : <Text className="text-[10px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: 'center', lineHeight: 20 }}>{(u.name||'').slice(0,1).toUpperCase()}</Text>}
+                      </View>
+                    );
+                  })()}
+                </View>
               )}
             </View>
             {/* Progress under title aligned with start of title (not under chevron) */}
@@ -266,7 +283,7 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
             </View>
           </View>
           {/* Right column (inside Swipeable): complete and submissions list (hidden while editing) */}
-          {editingId !== node.id && (
+          {editingId !== node.id && !readOnly && (
             <Animated.View
               className="pl-2 flex-row items-center gap-1"
               pointerEvents={swipingId === node.id ? 'none' : 'auto'}
@@ -318,7 +335,7 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
                 ]}
                 leftButtonWidth={68}
                 leftActionActivationDistance={84}
-                rightButtons={[
+                rightButtons={readOnly ? [] : [
                   <TouchableOpacity
                     key="edit"
                     onPress={(e: GestureResponderEvent) => {
@@ -398,7 +415,7 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
                 <View style={{ marginLeft: 28 }}>
                   {addingMap[node.id] === undefined ? (
                     <Pressable
-                      onPress={(e: GestureResponderEvent) => { e.stopPropagation(); startAdd(node.id); }}
+                      onPress={(e: GestureResponderEvent) => { e.stopPropagation(); if (!readOnly) startAdd(node.id); }}
                       className="mt-1 flex-row items-center gap-1 self-start px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-800"
                     >
                       <Ionicons name="add-circle-outline" size={16} color="#6b7280" />
@@ -443,7 +460,7 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
       {(!nodes || nodes.length === 0) && (
         <Text className="text-neutral-500 dark:text-neutral-400">No tasks yet.</Text>
       )}
-      {showAddRoot ? (
+      {showAddRoot && !readOnly ? (
         <View className="flex-col justify-start mt-2" style={{ marginLeft: 28 }} onLayout={(e) => { onRowLayout && onRowLayout('root-add', e.nativeEvent.layout.y); }}>
           {addingMap['root'] === undefined ? (
             <Pressable onPress={() => startAdd('root')} className="self-start flex-row items-center gap-1 px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-800">
@@ -483,7 +500,9 @@ function NestedChecklistImpl({ nodes, onChange, showAddRoot = false, highlightTa
         onSubmit={(content, atts) => {
           if (!submittingTaskId) return;
           addTaskSubmission(submittingTaskId, { content, attachments: atts });
-          onChange(setDoneLeaf(nodes, submittingTaskId, true));
+          if (!readOnly) {
+            onChange(setDoneLeaf(nodes, submittingTaskId, true));
+          }
           setSubmittingTaskId(null);
         }}
       />

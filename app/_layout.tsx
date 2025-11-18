@@ -4,9 +4,10 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Asset } from 'expo-asset';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // Using a simple View fallback gradient (replace with expo-linear-gradient if installed)
-import { View } from 'react-native';
+import { View, LogBox } from 'react-native';
 import { Logo } from '@/components/Brand';
 import 'react-native-reanimated';
 // Ensure NativeWind runtime is initialized early
@@ -33,9 +34,14 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    ...FontAwesome.font,
-  });
+  // Attempt normal vector icon font load; fallback to explicit require if needed
+  const [loaded, error] = useFonts(
+    FontAwesome?.font && Object.keys(FontAwesome.font).length
+      ? { ...FontAwesome.font }
+      : {
+          FontAwesome: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.ttf'),
+        }
+  );
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -48,9 +54,31 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
-  }
+  // Silence noisy third-party warnings while we migrate away from legacy Swipeable
+  useEffect(() => {
+    LogBox.ignoreLogs([
+      'Animated: `useNativeDriver` was not specified',
+      'Move code with side effects to componentDidMount',
+      'componentWillMount has been renamed',
+    ]);
+  }, []);
+
+  // Preload key banner images in the background (do not block splash)
+  useEffect(() => {
+    (async () => {
+      try {
+        const imgs = [
+          require('@/assets/images/EduPlus_Banner_background.png'),
+          require('@/assets/images/EduPlus_Banner_background_red.png'),
+          require('@/assets/images/EduPlus_Banner_background_green.png'),
+          require('@/assets/images/EduPlus_Banner_background_purple.png'),
+        ];
+        await Promise.all(imgs.map((m) => Asset.fromModule(m).downloadAsync()));
+      } catch {}
+    })();
+  }, []);
+
+  if (!loaded) return null; // keep splash until fonts ready
 
   return <RootLayoutNav />;
 }

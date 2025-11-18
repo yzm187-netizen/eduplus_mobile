@@ -137,6 +137,8 @@ async function ensureIndex(databaseId, collectionId, key, type, attributes, orde
   await ensureStringAttr(DB_ID, COURSES_ID, 'code', 32, true);
   await ensureStringAttr(DB_ID, COURSES_ID, 'title', 256, true);
   await ensureStringAttr(DB_ID, COURSES_ID, 'teacherId', 64, true);
+  // Allow ample room for catalog-style course descriptions
+  await ensureStringAttr(DB_ID, COURSES_ID, 'description', 2048, false);
   await ensureIndex(DB_ID, COURSES_ID, 'code_unique', 'unique', ['code']);
   await ensureIndex(DB_ID, COURSES_ID, 'teacherId_idx', 'key', ['teacherId']);
 

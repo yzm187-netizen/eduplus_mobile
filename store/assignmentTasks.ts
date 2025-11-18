@@ -6,6 +6,7 @@ import type { TaskNode } from '@/types/tasks';
 export type SectionState = {
   key: string;
   title: string;
+  description?: string; // optional teacher-provided summary for the section
   tasks: TaskNode[];
   // Per-section submission area
   submissionText?: string;

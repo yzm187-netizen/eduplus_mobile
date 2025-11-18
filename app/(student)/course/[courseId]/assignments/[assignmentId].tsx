@@ -4,6 +4,8 @@ import { View, Text, Pressable, TextInput, RefreshControl, Animated, KeyboardAvo
 import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Services } from '@/services/providers';
+import { account } from '@/lib/appwrite';
+import { CONFIG } from '@/utils/config';
 import type { AssignmentRef, Course } from '@/data/sample';
 import { formatRelativeShort } from '@/utils/date';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,7 +85,7 @@ export default function AssignmentDetailScreen() {
   const getPersisted = useAssignmentTasksStore((s) => s.getSections);
   const setPersisted = useAssignmentTasksStore((s) => s.setSections);
   const persisted = getPersisted(String(assignmentId));
-  const [sections, setSections] = useState<Section[]>(persisted ?? defaultSections);
+  const [sections, setSections] = useState<Section[]>(persisted ?? []);
   const [submitted, setSubmitted] = useState(false);
   const [finalVisible, setFinalVisible] = useState(false);
   const addFinalSubmission = useSubmissionsStore((s) => s.addFinalSubmission);
@@ -267,33 +269,96 @@ export default function AssignmentDetailScreen() {
     setSections((prev) => prev.map((s) => (s.key === key ? { ...s, submissionText: text } : s)));
   };
 
+  // Storage helpers for assignment attachments
+  const uploadToBucket = async (file: { uri: string; name?: string; type?: string }) => {
+    const BUCKET = CONFIG.APPWRITE_BUCKET_ID || '691032bc00073d40014c';
+    const base = CONFIG.APPWRITE_ENDPOINT?.replace(/\/$/, '') || 'https://cloud.appwrite.io/v1';
+    const project = CONFIG.APPWRITE_PROJECT_ID;
+    const url = `${base}/storage/buckets/${BUCKET}/files`;
+    const form = new FormData();
+    form.append('fileId', 'unique()');
+    form.append('file', { uri: file.uri, name: file.name || 'attachment', type: file.type || 'application/octet-stream' } as any);
+    try { (form as any).append('permissions[]', 'read("any")'); } catch {}
+    let jwt: string | undefined;
+    try { const j = await (account as any).createJWT?.(); jwt = j?.jwt; } catch {}
+    const headers: Record<string, string> = { 'X-Appwrite-Project': project || '' };
+    if (jwt) headers['X-Appwrite-JWT'] = jwt;
+    const res = await fetch(url, { method: 'POST', headers, body: form as any });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Upload failed: ${res.status} ${txt}`);
+    }
+    const uploaded: any = await res.json();
+    const fileId = uploaded?.$id;
+    let viewUrl: string | undefined;
+    if (project && fileId) viewUrl = `${base}/storage/buckets/${BUCKET}/files/${fileId}/view?project=${project}`;
+    return { fileId, url: viewUrl };
+  };
+
+  const deleteFromBucket = async (fileId?: string) => {
+    if (!fileId) return;
+    const BUCKET = CONFIG.APPWRITE_BUCKET_ID || '691032bc00073d40014c';
+    const base = CONFIG.APPWRITE_ENDPOINT?.replace(/\/$/, '') || 'https://cloud.appwrite.io/v1';
+    const project = CONFIG.APPWRITE_PROJECT_ID;
+    const url = `${base}/storage/buckets/${BUCKET}/files/${fileId}`;
+    let jwt: string | undefined;
+    try { const j = await (account as any).createJWT?.(); jwt = j?.jwt; } catch {}
+    const headers: Record<string, string> = { 'X-Appwrite-Project': project || '' };
+    if (jwt) headers['X-Appwrite-JWT'] = jwt;
+    try { await fetch(url, { method: 'DELETE', headers }); } catch {}
+  };
+
   const addSectionAttachments = async (key: string) => {
     try {
       const res: any = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true, type: '*/*' });
-      const picked: SectionAttachment[] = [];
+      const selected: Array<{ uri: string; name?: string; mimeType?: string; size?: number }> = [];
       if (res?.assets && Array.isArray(res.assets)) {
-        for (const a of res.assets) picked.push({ uri: a.uri, name: a.name, mimeType: a.mimeType, size: a.size });
+        for (const a of res.assets) selected.push({ uri: a.uri, name: a.name, mimeType: a.mimeType, size: a.size });
       } else if (res?.type === 'success') {
-        picked.push({ uri: res.uri, name: res.name, mimeType: res.mimeType, size: res.size });
+        selected.push({ uri: res.uri, name: res.name, mimeType: res.mimeType, size: res.size });
       } else {
         return;
       }
-      if (picked.length > 0) {
-        setSections((prev) => prev.map((s) => (s.key === key ? { ...s, attachments: [ ...(s.attachments || []), ...picked ] } : s)));
+      const uploaded: any[] = [];
+      for (const f of selected) {
+        try {
+          const up = await uploadToBucket({ uri: f.uri, name: f.name, type: f.mimeType });
+          uploaded.push({ uri: up.url, name: f.name, mimeType: f.mimeType, size: f.size, fileId: up.fileId });
+        } catch {}
+      }
+      if (uploaded.length > 0) {
+        setSections((prev) => prev.map((s) => (s.key === key ? { ...s, attachments: [ ...(s.attachments || []), ...uploaded ] } : s)));
       }
     } catch (_) {
-      // ignore for demo
+      // ignore
     }
   };
 
-  const removeSectionAttachment = (key: string, idx: number) => {
-    setSections((prev) => prev.map((s) => (s.key === key ? { ...s, attachments: (s.attachments || []).filter((_, i) => i !== idx) } : s)));
+  const removeSectionAttachment = async (key: string, idx: number) => {
+    let fileId: string | undefined;
+    setSections((prev) => prev.map((s) => {
+      if (s.key !== key) return s;
+      const atts = (s.attachments || []);
+      fileId = (atts[idx] as any)?.fileId;
+      return { ...s, attachments: atts.filter((_, i) => i !== idx) };
+    }));
+    try { await deleteFromBucket(fileId); } catch {}
   };
 
-  // Persist sections whenever they change
+  // Persist sections locally and to Appwrite
+  useEffect(() => { setPersisted(String(assignmentId), sections); }, [sections, assignmentId, setPersisted]);
+  const saveDebounce = useRef<any>(null);
   useEffect(() => {
-    setPersisted(String(assignmentId), sections);
-  }, [sections, assignmentId, setPersisted]);
+    if (!assignmentId) return;
+    if (saveDebounce.current) clearTimeout(saveDebounce.current);
+    saveDebounce.current = setTimeout(async () => {
+      try {
+        const payload = JSON.stringify(sections.map(s => ({ id: s.key, heading: s.title, tasks: s.tasks, attachments: s.attachments })));
+        await Services.assignments.update?.(String(assignmentId), { sectionsJson: payload });
+      } catch {}
+    }, 500);
+    return () => { if (saveDebounce.current) clearTimeout(saveDebounce.current); };
+  }, [sections, assignmentId]);
 
   const totalTasks = useMemo(() => sections.reduce((acc, s) => acc + countTotals(s.tasks).total, 0), [sections]);
   const completedTasks = useMemo(() => sections.reduce((acc, s) => acc + countTotals(s.tasks).done, 0), [sections]);
@@ -311,6 +376,23 @@ export default function AssignmentDetailScreen() {
     setDetail(d);
     setCourse(c);
     setRoster(ppl);
+    if ((!persisted || persisted.length === 0)) {
+      if (d?.sectionsJson) {
+        try {
+          const parsed = JSON.parse(d.sectionsJson);
+          if (Array.isArray(parsed)) {
+            const mapped: Section[] = parsed.map((s: any, idx: number) => ({ key: s.id || `sec-${idx}`, title: s.heading || s.title || `Section ${idx+1}`, tasks: Array.isArray(s.tasks) ? s.tasks : [], attachments: Array.isArray(s.attachments) ? s.attachments : undefined }));
+            setSections(mapped);
+          } else {
+            setSections(defaultSections);
+          }
+        } catch {
+          setSections(defaultSections);
+        }
+      } else {
+        setSections(defaultSections);
+      }
+    }
   }
 
   useEffect(() => {

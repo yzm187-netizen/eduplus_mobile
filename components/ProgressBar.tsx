@@ -12,7 +12,8 @@ export default function ProgressBar({ value, variant = 'default' }: Props) {
     variant === 'onDark'
       ? 'h-2 w-full bg-white/30 rounded-full overflow-hidden'
       : 'h-2 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden';
-  const fillClass = variant === 'onDark' ? 'h-full bg-white' : 'h-full bg-[#00AFC8]';
+  // Unified green progress fill to reduce confusion with white fill on dark backgrounds
+  const fillClass = variant === 'onDark' ? 'h-full bg-green-500' : 'h-full bg-green-500';
 
   return (
     <View className={containerClass}>

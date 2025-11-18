@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image, TextInput, Alert } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Services } from '@/services/providers';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { GradeTrend, StudyProgress } from '@/components/Charts';
-import { avatarUrl } from '@/utils/imagePlaceholders';
+import { colorForName } from '@/utils/avatar';
+import { updateProfile } from '@/services/live/profile';
+import { uploadAvatar, deleteAvatarFile } from '@/services/live/avatar';
 import { useAssignmentTasksStore } from '@/store/assignmentTasks';
 import { resetMockChat } from '@/services/mock/chat';
 
@@ -23,23 +26,60 @@ export default function StudentProfileScreen() {
   const toggleLargeText = useSettingsStore((s) => s.toggleLargeText);
 
   // Simple mock: cycle through a few deterministic placeholder avatars per user
-  const [avatarVariant, setAvatarVariant] = useState(0);
+  // Removed variant cycling; rely solely on uploaded photo or initials fallback.
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.name ?? '');
   const [emailDraft, setEmailDraft] = useState(user?.email ?? '');
+  const [pendingAvatar, setPendingAvatar] = useState<{ uri: string } | null>(null);
   const clearAssignments = useAssignmentTasksStore((s) => s.clear);
 
-  const onChangeAvatar = () => {
+  const onChangeAvatar = async () => {
     if (!user) return;
-    const next = (avatarVariant + 1) % 5; // 5 variants
-    setAvatarVariant(next);
-    const url = avatarUrl(`${user.id}-v${next}`, 128);
-    setUser({ ...user, avatarUrl: url });
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Allow photo library access to set an avatar.');
+      return;
+    }
+    let result: any;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+    } catch (e) {
+      console.warn('[avatar-picker] failed initial launch', (e as any)?.message || e);
+      return;
+    }
+    if (result.canceled || !result.assets?.length) return;
+    const asset = result.assets[0];
+    setPendingAvatar({ uri: asset.uri });
   };
+
+  const onConfirmAvatar = async () => {
+    if (!user || !pendingAvatar) return;
+    try {
+      const previousFileId = (user as any).avatarFileId;
+      if (previousFileId) deleteAvatarFile(previousFileId);
+      const { fileId, url } = await uploadAvatar({ uri: pendingAvatar.uri, name: 'avatar.jpg', type: 'image/jpeg' });
+      await updateProfile(user.id, { avatarFileId: fileId });
+      setUser({ ...user, avatarUrl: url, avatarFileId: fileId as any });
+    } catch (e) {
+      Alert.alert('Avatar', (e as any)?.message || 'Upload failed');
+      console.warn('Avatar upload failed', e);
+    } finally {
+      setPendingAvatar(null);
+    }
+  };
+
+  const onCancelPendingAvatar = () => setPendingAvatar(null);
 
   const onRemoveAvatar = () => {
     if (!user) return;
-    setUser({ ...user, avatarUrl: undefined });
+    const prev = (user as any).avatarFileId;
+    if (prev) deleteAvatarFile(prev);
+    updateProfile(user.id, { avatarFileId: null }).catch(() => {});
+    setUser({ ...user, avatarUrl: undefined, avatarFileId: undefined });
   };
 
   useEffect(() => {
@@ -48,9 +88,12 @@ export default function StudentProfileScreen() {
     setEmailDraft(user?.email ?? '');
   }, [user]);
 
-  const onSaveProfile = () => {
+  const onSaveProfile = async () => {
     if (!user) return;
-    setUser({ ...user, name: nameDraft.trim() || user.name, email: emailDraft.trim() || user.email });
+    const newName = nameDraft.trim() || user.name;
+    const newEmail = emailDraft.trim() || user.email;
+    try { await updateProfile(user.id, { name: newName, email: newEmail }); } catch {}
+    setUser({ ...user, name: newName, email: newEmail });
     setEditing(false);
   };
 
@@ -73,8 +116,8 @@ export default function StudentProfileScreen() {
           {user?.avatarUrl ? (
             <Image source={{ uri: user.avatarUrl }} style={{ width: 48, height: 48, borderRadius: 12 }} />
           ) : (
-            <View className="w-12 h-12 rounded-xl bg-neutral-200 dark:bg-neutral-800 items-center justify-center">
-              <Text className="text-lg text-neutral-700 dark:text-neutral-200">{(user?.name?.[0] || 'S').toUpperCase()}</Text>
+            <View className="w-12 h-12 rounded-xl items-center justify-center" style={{ backgroundColor: colorForName(user?.name) }}>
+              <Text className="text-lg text-white">{(user?.name?.[0] || 'S').toUpperCase()}</Text>
             </View>
           )}
           <View>
@@ -84,12 +127,26 @@ export default function StudentProfileScreen() {
         </View>
         <View className="flex-row gap-2 mb-4">
           <Pressable onPress={onChangeAvatar} className="px-3 py-2 rounded-full border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
-            <Text className="text-neutral-700 dark:text-neutral-200">Change photo</Text>
+            <Text className="text-neutral-700 dark:text-neutral-200">Upload photo</Text>
           </Pressable>
           <Pressable onPress={onRemoveAvatar} className="px-3 py-2 rounded-full border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
             <Text className="text-neutral-700 dark:text-neutral-200">Remove</Text>
           </Pressable>
         </View>
+        {pendingAvatar && (
+          <View className="mb-6 items-start">
+            <Text className="text-sm mb-2 text-neutral-600 dark:text-neutral-300">Preview</Text>
+            <Image source={{ uri: pendingAvatar.uri }} style={{ width: 72, height: 72, borderRadius: 16 }} />
+            <View className="flex-row gap-2 mt-3">
+              <Pressable onPress={onCancelPendingAvatar} className="px-3 py-2 rounded-full border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800">
+                <Text className="text-neutral-700 dark:text-neutral-200">Cancel</Text>
+              </Pressable>
+              <Pressable onPress={onConfirmAvatar} className="px-3 py-2 rounded-full bg-[#00AFC8]">
+                <Text className="text-white font-semibold">Save Avatar</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         <View className="flex-row gap-3 mb-6">
           {stats && [
